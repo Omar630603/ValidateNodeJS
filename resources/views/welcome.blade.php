@@ -16,7 +16,7 @@
         @endauth
     </div>
     @endif
-    <p class="dark:text-gray-300">
+    <p class="dark:text-gray-300 text-center">
         @auth
         Welcome, {{ Auth::user()->name }}.
         @else

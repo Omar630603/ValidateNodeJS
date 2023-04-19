@@ -1,3 +1,67 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+.paginate_button {
+    padding: 2px 10px !important;
+    border: 0 !important;
+    border-radius: 6px !important;
+    background-color: transparent !important;
+}
+
+.paginate_button:hover {
+    background-color: rgb(44, 169, 188) !important;
+}
+
+.paginate_button.current {
+    background-color: rgb(44, 169, 188) !important;
+}
+
+.paginate_button.next {
+    background-color: transparent !important;
+}
+
+.paginate_button.previous {
+    background-color: transparent !important;
+}
+
+.paginate_button.active > .page-link {
+    color: #fff;
+    font-size: small;
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+    border: none !important;
+    background-color: rgb(0, 72, 81) !important;
+    background: -webkit-gradient(
+        linear,
+        left top,
+        left bottom,
+        color-stop(0%, rgb(0, 72, 81)),
+        color-stop(100%, rgb(0, 72, 81))
+    ) !important;
+    background: -webkit-linear-gradient(
+        top,
+        rgb(0, 72, 81) 0%,
+        rgb(0, 72, 81) 100%
+    ) !important;
+    background: -moz-linear-gradient(
+        top,
+        rgb(0, 72, 81) 0%,
+        rgb(0, 72, 81) 100%
+    ) !important;
+    background: -ms-linear-gradient(
+        top,
+        rgb(0, 72, 81) 0%,
+        rgb(0, 72, 81) 100%
+    ) !important;
+    background: -o-linear-gradient(
+        top,
+        rgb(0, 72, 81) 0%,
+        rgb(0, 72, 81) 100%
+    ) !important;
+    background: linear-gradient(
+        to bottom,
+        rgb(0, 72, 81) 0%,
+        rgb(0, 72, 81) 100%
+    ) !important;
+}
