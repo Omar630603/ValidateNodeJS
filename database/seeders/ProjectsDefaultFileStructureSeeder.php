@@ -105,7 +105,8 @@ class ProjectsDefaultFileStructureSeeder extends Seeder
                     'README',
                 ]),
                 'replacements' => json_encode([
-                    '.env' => ''
+                    '.env',
+                    'tests',
                 ]),
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -204,7 +205,8 @@ class ProjectsDefaultFileStructureSeeder extends Seeder
                     'README',
                 ]),
                 'replacements' => json_encode([
-                    '.env' => ''
+                    '.env',
+                    'tests'
                 ]),
                 'created_at' => now(),
                 'updated_at' => now(),

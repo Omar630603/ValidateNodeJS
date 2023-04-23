@@ -1,5 +1,5 @@
 <div class="flex flex-col max-w-sm rounded-lg overflow-hidden shadow-lg bg-white dark:bg-gray-900 h-full">
-    <img class="w-40 mx-auto my-4" src="{{$project->image}}" alt="Project {{$project->title}}"
+    <img class="w-40 mx-auto my-4" src="{{$project->getImageAttribute()}}" alt="Project {{$project->title}}"
         onerror="this.onerror=null;this.src='{{asset('placeholder.png')}}';">
     <div class="px-6 py-4">
         <div class="font-bold text-xl mb-2 text-gray-800 dark:text-white">{{$project->title}}</div>

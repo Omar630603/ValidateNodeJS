@@ -4,10 +4,20 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
 
-class Submission extends Model
+class Submission extends Model implements HasMedia
 {
-    use HasFactory;
+    use HasFactory, InteractsWithMedia;
+    static $tyeps = ['file', 'url'];
+    static $statues =  ['pending', 'processing', 'completed', 'failed'];
+    static $FILE = 'file';
+    static $URL = 'url';
+    static $PENDING = 'pending';
+    static $PROCESSING = 'processing';
+    static $COMPLETED = 'completed';
+    static $FAILED = 'failed';
 
     protected $fillable = [
         'user_id',
@@ -40,5 +50,10 @@ class Submission extends Model
     public function setResultsAttribute($value)
     {
         $this->attributes['results'] = json_encode($value);
+    }
+
+    public function getFileAttribute()
+    {
+        return $this->getFirstMediaUrl('public_submissions_files');
     }
 }

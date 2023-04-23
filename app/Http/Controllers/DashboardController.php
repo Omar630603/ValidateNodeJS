@@ -18,8 +18,7 @@ class DashboardController extends Controller
                 ->select('projects.id', 'projects.title', DB::raw('COUNT(submissions.id) as submission_count'))
                 ->leftJoin('submissions', function ($join) use ($user) {
                     $join->on('projects.id', '=', 'submissions.project_id')
-                        ->where('submissions.user_id', '=', $user->id)
-                        ->where('submissions.status', '=', 'completed');
+                        ->where('submissions.user_id', '=', $user->id);
                 })
                 ->groupBy('projects.id');
 

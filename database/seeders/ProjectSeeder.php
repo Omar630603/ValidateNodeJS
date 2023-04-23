@@ -39,5 +39,12 @@ class ProjectSeeder extends Seeder
             'created_at' => now(),
             'updated_at' => now(),
         ]]);
+
+
+        $project_api_experiment = Project::where('title', 'api-experiment')->first();
+        $project_auth_experiment = Project::where('title', 'auth-experiment')->first();
+
+        $project_api_experiment->addMedia(storage_path('app/public/assets/projects/api-experiment.png'))->toMediaCollection('projects', 'public_projects_images');
+        $project_auth_experiment->addMedia(storage_path('app/public/assets/projects/auth-experiment.png'))->toMediaCollection('projects', 'public_projects_images');
     }
 }

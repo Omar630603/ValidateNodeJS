@@ -4,10 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
 
-class Project extends Model
+class Project extends  Model implements HasMedia
 {
-    use HasFactory;
+    use HasFactory, InteractsWithMedia;
 
     protected $fillable = [
         'title',
@@ -39,5 +41,10 @@ class Project extends Model
     public function setTechStackAttribute($value): void
     {
         $this->attributes['tech_stack'] = json_encode($value);
+    }
+
+    public function getImageAttribute(): string
+    {
+        return $this->getFirstMediaUrl('public_projects_images');
     }
 }
