@@ -34,8 +34,11 @@ Route::middleware('auth')->group(function () {
     // Submissions
     Route::prefix('submissions')->group(function () {
         Route::get('/', [SubmissionController::class, 'index'])->name('submissions');
-        Route::post('upload/{project_id}', [SubmissionController::class, 'upload'])->name('submissions.upload');
-        Route::post('submit', [SubmissionController::class, 'submit'])->name('submissions.submit');
+        Route::get('/project/{project_id}', [SubmissionController::class, 'showAllSubmissionsBasedOnProject'])->name('submissions.showAll');
+        Route::get('/submission/{submission_id}', [SubmissionController::class, 'show'])->name('submissions.show');
+        Route::post('/process/submission/{submission_id}', [SubmissionController::class, 'process'])->name('submissions.process');
+        Route::post('/upload/{project_id}', [SubmissionController::class, 'upload'])->name('submissions.upload');
+        Route::post('/submit', [SubmissionController::class, 'submit'])->name('submissions.submit');
     });
 });
 

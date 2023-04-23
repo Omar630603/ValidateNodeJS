@@ -104,7 +104,8 @@
                                     icon: "success",
                                     button: "Ok",
                                 }).then(function() {
-                                    // window.location = "/dashboard";
+                                    const submission_id = data.submission.id;
+                                    window.location = "/submissions/submission/" + submission_id;
                                 });
                             },
                             error: function(data) {
@@ -165,7 +166,8 @@
                                         icon: "success",
                                         button: "Ok",
                                     }).then(function() {
-                                        // window.location = "/dashboard";
+                                        const submission_id = data.submission.id;
+                                        window.location = "/submissions/submission/" + submission_id;
                                     });
                                 },
                                 error: function(data) {

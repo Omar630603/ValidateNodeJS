@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\CloneRepo\CloneRepoEvent;
 use App\Models\Project;
 use App\Models\Submission;
 use App\Models\TemporaryFile;
@@ -78,6 +79,47 @@ class SubmissionController extends Controller
                 'message' => 'Submission failed',
                 'error' => $th->getMessage(),
             ], 500);
+        }
+    }
+
+    public function showAllSubmissionsBasedOnProject(Request $request, $project_id)
+    {
+        $project = Project::find($project_id);
+        $submissions = Submission::where('project_id', $project_id)
+            ->where('user_id', $request->user()->id)->get();
+        if (!$project) {
+            return redirect()->route('submissions');
+        }
+        return view('submissions.show', compact('project', 'submissions'));
+    }
+
+    public function show(Request $request, $submission_id)
+    {
+        $submission = Submission::find($submission_id);
+        if ($submission) {
+            return view('submissions.show', compact('submission'));
+        }
+        return redirect()->route('submissions');
+    }
+
+    public function process(Request $request, $submission_id)
+    {
+        $submission = Submission::find($submission_id);
+        if ($submission) {
+            if ($submission->isGithubUrl()) {
+                $repoUrl = $submission->path;
+                $tempDir = storage_path('app/public/tmp/submissions/repo/' . $request->user()->id . '/' . $submission->id);
+
+                event(new CloneRepoEvent($submission->id, $repoUrl, $tempDir));
+
+                // Return a response to the user indicating that the cloning process has started
+                return response()->json([
+                    'message' => 'Cloning process has started',
+                ], 200);
+            } else {
+                // Extract the zip file
+                // Dispatch the next event (e.g. RunTestsEvent)
+            }
         }
     }
 

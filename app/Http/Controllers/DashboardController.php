@@ -26,7 +26,7 @@ class DashboardController extends Controller
             return Datatables::of($data)
                 ->addIndexColumn()
                 ->addColumn('title', function ($row) {
-                    $title_button = '<a href="/submissions/' . $row->id . '" class="underline text-secondary">' . $row->title . '</a>';
+                    $title_button = '<a href="/submissions/project/' . $row->id . '" class="underline text-secondary">' . $row->title . '</a>';
                     return $title_button;
                 })
                 ->rawColumns(['title'])

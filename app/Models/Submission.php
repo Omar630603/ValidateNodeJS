@@ -10,7 +10,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
 class Submission extends Model implements HasMedia
 {
     use HasFactory, InteractsWithMedia;
-    static $tyeps = ['file', 'url'];
+    static $types = ['file', 'url'];
     static $statues =  ['pending', 'processing', 'completed', 'failed'];
     static $FILE = 'file';
     static $URL = 'url';
@@ -55,5 +55,10 @@ class Submission extends Model implements HasMedia
     public function getFileAttribute()
     {
         return $this->getFirstMediaUrl('public_submissions_files');
+    }
+
+    public function isGithubUrl()
+    {
+        return $this->type == self::$URL;
     }
 }
