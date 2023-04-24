@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Events\CloneRepo\CloneRepoEvent;
+use App\Events\CloneRepository\CloneRepositoryEvent;
+use App\Models\ExecutionStep;
 use App\Models\Project;
+use App\Models\ProjectExecutionStep;
 use App\Models\Submission;
 use App\Models\TemporaryFile;
 use Illuminate\Http\Request;
@@ -12,6 +14,28 @@ class SubmissionController extends Controller
 {
     public function index(Request $request)
     {
+        // $step = Project::find(1)->projectExecutionSteps()->where('order', 1)->first();
+        // $commands = $step->executionStep->commands;
+        // $step_variables = $step->variables;
+        // $repoUrl = 'ok';
+        // $tempDir = 'ok';
+        // $values = ["{{repoUrl}}" => $repoUrl, '{{tempDir}}' => $tempDir];
+        // // change the command to the actual values in array_replace function
+        // // foreach ($step_variables as $variableValue) {
+        // //     foreach ($commands as $commandKey => $commandValue) {
+        // //         if ($commandValue === $variableValue) {
+        // //             $commands[$commandKey] = $values[$variableValue];
+        // //         }
+        // //     }
+        // // }
+        // $commands = array_reduce($step_variables, function ($commands, $variableValue) use ($values) {
+        //     return array_map(function ($command) use ($variableValue, $values) {
+        //         return $command === $variableValue ? $values[$variableValue] : $command;
+        //     }, $commands);
+        // }, $step->executionStep->commands);
+
+
+        // dd($commands, $step_variables);
         return view('submissions.index');
     }
 
@@ -97,7 +121,9 @@ class SubmissionController extends Controller
     {
         $submission = Submission::find($submission_id);
         if ($submission) {
-            return view('submissions.show', compact('submission'));
+            $steps = $submission->getExecutionSteps();
+            $currentStep = $submission->getCurrentExecutionStep();
+            return view('submissions.show', compact('submission', 'steps', 'currentStep'));
         }
         return redirect()->route('submissions');
     }
@@ -106,26 +132,147 @@ class SubmissionController extends Controller
     {
         $submission = Submission::find($submission_id);
         if ($submission) {
-            if ($submission->isGithubUrl()) {
-                $repoUrl = $submission->path;
-                $tempDir = storage_path('app/public/tmp/submissions/repo/' . $request->user()->id . '/' . $submission->id);
-
-                event(new CloneRepoEvent($submission->id, $repoUrl, $tempDir));
-
-                // Return a response to the user indicating that the cloning process has started
+            // the first stage of the submission change the status and initialize the results
+            if ($submission->status === Submission::$PENDING) {
+                $submission->initializeResults();
+                $submission->updateStatus(Submission::$PROCESSING);
                 return response()->json([
-                    'message' => 'Cloning process has started',
+                    'message' => 'Submission is processing',
+                    'status' => $submission->status,
+                    'results' => $submission->results,
                 ], 200);
-            } else {
-                // Extract the zip file
-                // Dispatch the next event (e.g. RunTestsEvent)
+            } else if ($submission->status === Submission::$COMPLETED) {
+                return response()->json([
+                    'message' => 'Submission is completed',
+                    'status' => $submission->status,
+                    'results' => $submission->results,
+                ], 200);
+            } else if ($submission->status === Submission::$FAILED) {
+                return response()->json([
+                    'message' => 'Submission is failed',
+                    'status' => $submission->status,
+                    'results' => $submission->results,
+                ], 500);
+            } else if ($submission->status === Submission::$PROCESSING) {
+                $step = $submission->getCurrentExecutionStep($request->step_id);
+                if ($step) {
+                    if ($step->executionStep->name === ExecutionStep::$CLONE_REPOSITORY) {
+                        $repoUrl = $submission->path;
+                        $tempDir = storage_path('app/public/tmp/submissions/' . $submission->user_id . '/' . $submission->project->title . '/' . $submission->id);
+                        $this->lunchCloneRepositoryEvent($submission, $repoUrl, $tempDir, $step);
+                        // } else if ($step->executionStep->name === ExecutionStep::$UNZIP_ZIP_FILES) {
+                        //     $this->lunchUnzipZipFilesEvent();
+                        // } else if ($step->executionStep->name === ExecutionStep::$REMOVE_ZIP_FILES) {
+                        //     $this->lunchRemoveZipFilesEvent();
+                        // } else if ($step->executionStep->name === ExecutionStep::$EXAMINE_FOLDER_STRUCTURE) {
+                        //     $this->lunchExamineFolderStructureEvent();
+                        // } else if ($step->executionStep->name === ExecutionStep::$ADD_ENV_FILE) {
+                        //     $this->lunchAddEnvFileEvent();
+                        // } else if ($step->executionStep->name === ExecutionStep::$REPLACE_PACKAGE_JSON) {
+                        //     $this->lunchReplacePackageJsonEvent();
+                        // } else if ($step->executionStep->name === ExecutionStep::$COPY_TESTS_FOLDER) {
+                        //     $this->lunchCopyTestsFolderEvent();
+                        // } else if ($step->executionStep->name === ExecutionStep::$NPM_INSTALL) {
+                        //     $this->lunchNpmInstallEvent();
+                        // } else if ($step->executionStep->name === ExecutionStep::$NPM_RUN_BUILD) {
+                        //     $this->lunchNpmRunBuildEvent();
+                        // } else if ($step->executionStep->name === ExecutionStep::$NPM_RUN_TESTS) {
+                        //     $this->lunchNpmRunTestsEvent();
+                        // } else if ($step->executionStep->name === ExecutionStep::$DELETE_TEMP_DIRECTORY) {
+                        //     $this->lunchDeleteTempDirectoryEvent();
+                    }
+                    if ($submission->results->{$step->executionStep->name}->status == Submission::$PROCESSING) {
+                        return response()->json([
+                            'message' => 'Step ' . $step->executionStep->name . ' is ' . $submission->results->{$step->executionStep->name}->status,
+                            'status' => $submission->status,
+                            'results' => $submission->results,
+                            'next_step' => $submission->getNextExecutionStep($request->step_id),
+                        ], 200);
+                    }
+                }
+                return response()->json([
+                    'message' => 'Step not found',
+                    'status' => $submission->status,
+                    'results' => $submission->results,
+                ], 404);
             }
         }
     }
+
+
 
     private function is_dir_empty($dir)
     {
         if (!is_readable($dir)) return null;
         return (count(scandir($dir)) == 2);
     }
+
+    private function replaceCommandArraysWithValues($step_variables, $values, $step)
+    {
+        return array_reduce($step_variables, function ($commands, $variableValue) use ($values) {
+            return array_map(function ($command) use ($variableValue, $values) {
+                return $command === $variableValue ? $values[$variableValue] : $command;
+            }, $commands);
+        }, $step->executionStep->commands);
+    }
+
+    private function lunchCloneRepositoryEvent($submission, $repoUrl, $tempDir, $step)
+    {
+        $commands = $step->executionStep->commands;
+        $step_variables = $step->variables;
+        $values = ["{{repoUrl}}" => $repoUrl, '{{tempDir}}' => $tempDir];
+        // change the command to the actual values in array_replace function
+        $commands = $this->replaceCommandArraysWithValues($step_variables, $values, $step);
+        event(new CloneRepositoryEvent($submission->id, $repoUrl, $tempDir, $commands));
+    }
+
+    //     private function lunchUnzipZipFilesEvent()
+    //     {
+    //         event(new UnzipZipFilesEvent());
+    //     }
+
+    //     private function lunchRemoveZipFilesEvent()
+    //     {
+    //         event(new RemoveZipFilesEvent());
+    //     }
+
+    //     private function lunchExamineFolderStructureEvent()
+    //     {
+    //         event(new ExamineFolderStructureEvent());
+    //     }
+
+    //     private function lunchAddEnvFileEvent()
+    //     {
+    //         event(new AddEnvFileEvent());
+    //     }
+
+    //     private function lunchReplacePackageJsonEvent()
+    //     {
+    //         event(new ReplacePackageJsonEvent());
+    //     }
+
+    //     private function lunchCopyTestsFolderEvent()
+    //     {
+    //         event(new CopyTestsFolderEvent());
+    //     }
+
+    //     private function lunchNpmInstallEvent()
+    //     {
+    //         event(new NpmInstallEvent());
+    //     }
+
+    //     private function lunchNpmRunBuildEvent()
+    //     {
+    //         event(new NpmRunBuildEvent());
+    //     }
+
+    //     private function lunchNpmRunTestsEvent()
+    //     {
+    //         event(new NpmRunTestsEvent());
+    //     }
+
+    //     private function lunchDeleteTempDirectoryEvent()
+    //     {
+    //         event(new DeleteTempDirectoryEvent());
+    //     }
 }

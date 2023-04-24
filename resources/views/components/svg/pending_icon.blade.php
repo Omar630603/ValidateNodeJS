@@ -1,6 +1,6 @@
+@props(['width' => '20px', 'height' => '20px'])
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Uploaded to: SVG Repo, www.svgrepo.com, Generator: SVG Repo Mixer Tools -->
-<svg fill="rgb(209 213 219)" width="800px" height="800px" viewBox="0 0 32 32" id="icon"
+<svg fill="rgb(156 163 175)" width="{{$width}}" height="{{$height}}" viewBox="0 0 32 32" id="icon"
     xmlns="http://www.w3.org/2000/svg">
     <defs>
         <style>

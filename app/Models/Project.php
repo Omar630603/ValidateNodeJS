@@ -33,6 +33,11 @@ class Project extends  Model implements HasMedia
         return $this->hasMany(Submission::class);
     }
 
+    public function projectExecutionSteps(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(ProjectExecutionStep::class);
+    }
+
     public function getTechStackAttribute($value): array
     {
         return json_decode($value, true);

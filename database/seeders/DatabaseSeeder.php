@@ -15,6 +15,8 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             ProjectSeeder::class,
             ProjectsDefaultFileStructureSeeder::class,
+            ExecutionStepSeeder::class,
+            ProjectExecutionStepSeeder::class,
         ]);
     }
 }

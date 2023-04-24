@@ -5,7 +5,7 @@
             {{ __('Submissions') }}
         </h2>
     </div>
-    <div class="grid grid-cols-2 gap-4 py-2">
+    <div class="grid grid-col-1 md:grid-cols-2 gap-4 py-2">
         @include('dashboard.partials.submissions.table')
         @include('dashboard.partials.submissions.form')
     </div>
