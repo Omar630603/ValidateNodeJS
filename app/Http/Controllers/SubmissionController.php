@@ -136,10 +136,12 @@ class SubmissionController extends Controller
             if ($submission->status === Submission::$PENDING) {
                 $submission->initializeResults();
                 $submission->updateStatus(Submission::$PROCESSING);
+                $currentStep = $submission->getCurrentExecutionStep();
                 return response()->json([
                     'message' => 'Submission is processing',
                     'status' => $submission->status,
                     'results' => $submission->results,
+                    'next_step' => $currentStep,
                 ], 200);
             } else if ($submission->status === Submission::$COMPLETED) {
                 return response()->json([
@@ -156,7 +158,7 @@ class SubmissionController extends Controller
             } else if ($submission->status === Submission::$PROCESSING) {
                 $step = $submission->getCurrentExecutionStep($request->step_id);
                 if ($step) {
-                    if ($step->executionStep->name === ExecutionStep::$CLONE_REPOSITORY) {
+                    if ($step->executionStep->name === ExecutionStep::$CLONE_REPOSITORY && $submission->results->{$step->executionStep->name}->status == Submission::$PENDING) {
                         $repoUrl = $submission->path;
                         $tempDir = storage_path('app/public/tmp/submissions/' . $submission->user_id . '/' . $submission->project->title . '/' . $submission->id);
                         $this->lunchCloneRepositoryEvent($submission, $repoUrl, $tempDir, $step);
@@ -181,12 +183,19 @@ class SubmissionController extends Controller
                         // } else if ($step->executionStep->name === ExecutionStep::$DELETE_TEMP_DIRECTORY) {
                         //     $this->lunchDeleteTempDirectoryEvent();
                     }
-                    if ($submission->results->{$step->executionStep->name}->status == Submission::$PROCESSING) {
+                    if ($submission->results->{$step->executionStep->name}->status == Submission::$COMPLETED) {
                         return response()->json([
                             'message' => 'Step ' . $step->executionStep->name . ' is ' . $submission->results->{$step->executionStep->name}->status,
                             'status' => $submission->status,
                             'results' => $submission->results,
                             'next_step' => $submission->getNextExecutionStep($request->step_id),
+                        ], 200);
+                    } else {
+                        return response()->json([
+                            'message' => 'Step ' . $step->executionStep->name . ' is ' . $submission->results->{$step->executionStep->name}->status,
+                            'status' => $submission->status,
+                            'results' => $submission->results,
+                            'next_step' => $step,
                         ], 200);
                     }
                 }

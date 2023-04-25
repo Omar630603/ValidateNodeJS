@@ -84,6 +84,7 @@ class Submission extends Model implements HasMedia
         $steps = $this->getExecutionSteps();
         foreach ($steps as $step) {
             $results[$step->executionStep->name] = [
+                'stepID' => $step->id,
                 'status' => self::$PENDING,
                 'output' => '',
             ];
@@ -100,10 +101,8 @@ class Submission extends Model implements HasMedia
     public function updateOneResult($step_name, $status, $output)
     {
         $results = $this->results;
-        $results->$step_name = [
-            'status' => $status,
-            'output' => $output,
-        ];
+        $results->$step_name->status = $status;
+        $results->$step_name->output = $output;
         $this->updateResults($results);
     }
 

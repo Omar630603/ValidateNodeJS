@@ -37,7 +37,6 @@ class CloneRepositoryListener
             $step_name =   $step->name;
             $status = Submission::$COMPLETED;
             $output = $process->getOutput();
-            $submission->updateStatus($status);
             $submission->updateOneResult($step_name, $status, $output);
         } else {
             Log::error("Failed to clone repo {$event->repoUrl}");
@@ -45,7 +44,6 @@ class CloneRepositoryListener
             $step_name =   $step->name;
             $status = Submission::$FAILED;
             $output = $process->getErrorOutput();
-            $submission->updateStatus($status);
             $submission->updateOneResult($step_name, $status, $output);
         }
     }
