@@ -123,6 +123,8 @@ class SubmissionController extends Controller
         if ($submission) {
             $steps = $submission->getExecutionSteps();
             $currentStep = $submission->getCurrentExecutionStep();
+            // $currentResults = json_encode(get_object_vars($submission->results));
+            // return view('submissions.show', compact('submission', 'steps', 'currentStep', 'currentResults'));
             return view('submissions.show', compact('submission', 'steps', 'currentStep'));
         }
         return redirect()->route('submissions');
@@ -145,43 +147,45 @@ class SubmissionController extends Controller
                 ], 200);
             } else if ($submission->status === Submission::$COMPLETED) {
                 return response()->json([
-                    'message' => 'Submission is completed',
+                    'message' => 'Submission has completed',
                     'status' => $submission->status,
                     'results' => $submission->results,
                 ], 200);
             } else if ($submission->status === Submission::$FAILED) {
                 return response()->json([
-                    'message' => 'Submission is failed',
+                    'message' => 'Submission has failed',
                     'status' => $submission->status,
                     'results' => $submission->results,
-                ], 500);
+                ], 200);
             } else if ($submission->status === Submission::$PROCESSING) {
                 $step = $submission->getCurrentExecutionStep($request->step_id);
                 if ($step) {
-                    if ($step->executionStep->name === ExecutionStep::$CLONE_REPOSITORY && $submission->results->{$step->executionStep->name}->status == Submission::$PENDING) {
-                        $repoUrl = $submission->path;
-                        $tempDir = storage_path('app/public/tmp/submissions/' . $submission->user_id . '/' . $submission->project->title . '/' . $submission->id);
-                        $this->lunchCloneRepositoryEvent($submission, $repoUrl, $tempDir, $step);
-                        // } else if ($step->executionStep->name === ExecutionStep::$UNZIP_ZIP_FILES) {
-                        //     $this->lunchUnzipZipFilesEvent();
-                        // } else if ($step->executionStep->name === ExecutionStep::$REMOVE_ZIP_FILES) {
-                        //     $this->lunchRemoveZipFilesEvent();
-                        // } else if ($step->executionStep->name === ExecutionStep::$EXAMINE_FOLDER_STRUCTURE) {
-                        //     $this->lunchExamineFolderStructureEvent();
-                        // } else if ($step->executionStep->name === ExecutionStep::$ADD_ENV_FILE) {
-                        //     $this->lunchAddEnvFileEvent();
-                        // } else if ($step->executionStep->name === ExecutionStep::$REPLACE_PACKAGE_JSON) {
-                        //     $this->lunchReplacePackageJsonEvent();
-                        // } else if ($step->executionStep->name === ExecutionStep::$COPY_TESTS_FOLDER) {
-                        //     $this->lunchCopyTestsFolderEvent();
-                        // } else if ($step->executionStep->name === ExecutionStep::$NPM_INSTALL) {
-                        //     $this->lunchNpmInstallEvent();
-                        // } else if ($step->executionStep->name === ExecutionStep::$NPM_RUN_BUILD) {
-                        //     $this->lunchNpmRunBuildEvent();
-                        // } else if ($step->executionStep->name === ExecutionStep::$NPM_RUN_TESTS) {
-                        //     $this->lunchNpmRunTestsEvent();
-                        // } else if ($step->executionStep->name === ExecutionStep::$DELETE_TEMP_DIRECTORY) {
-                        //     $this->lunchDeleteTempDirectoryEvent();
+                    if ($submission->results->{$step->executionStep->name}->status == Submission::$PENDING) {
+                        if ($step->executionStep->name === ExecutionStep::$CLONE_REPOSITORY) {
+                            $repoUrl = $submission->path;
+                            $tempDir = storage_path('app/public/tmp/submissions/' . $submission->user_id . '/' . $submission->project->title . '/' . $submission->id);
+                            $this->lunchCloneRepositoryEvent($submission, $repoUrl, $tempDir, $step);
+                            // } else if ($step->executionStep->name === ExecutionStep::$UNZIP_ZIP_FILES) {
+                            //     $this->lunchUnzipZipFilesEvent();
+                            // } else if ($step->executionStep->name === ExecutionStep::$REMOVE_ZIP_FILES) {
+                            //     $this->lunchRemoveZipFilesEvent();
+                            // } else if ($step->executionStep->name === ExecutionStep::$EXAMINE_FOLDER_STRUCTURE) {
+                            //     $this->lunchExamineFolderStructureEvent();
+                            // } else if ($step->executionStep->name === ExecutionStep::$ADD_ENV_FILE) {
+                            //     $this->lunchAddEnvFileEvent();
+                            // } else if ($step->executionStep->name === ExecutionStep::$REPLACE_PACKAGE_JSON) {
+                            //     $this->lunchReplacePackageJsonEvent();
+                            // } else if ($step->executionStep->name === ExecutionStep::$COPY_TESTS_FOLDER) {
+                            //     $this->lunchCopyTestsFolderEvent();
+                            // } else if ($step->executionStep->name === ExecutionStep::$NPM_INSTALL) {
+                            //     $this->lunchNpmInstallEvent();
+                            // } else if ($step->executionStep->name === ExecutionStep::$NPM_RUN_BUILD) {
+                            //     $this->lunchNpmRunBuildEvent();
+                            // } else if ($step->executionStep->name === ExecutionStep::$NPM_RUN_TESTS) {
+                            //     $this->lunchNpmRunTestsEvent();
+                            // } else if ($step->executionStep->name === ExecutionStep::$DELETE_TEMP_DIRECTORY) {
+                            //     $this->lunchDeleteTempDirectoryEvent();
+                        }
                     }
                     if ($submission->results->{$step->executionStep->name}->status == Submission::$COMPLETED) {
                         return response()->json([

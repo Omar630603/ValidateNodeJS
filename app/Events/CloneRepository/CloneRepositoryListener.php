@@ -44,6 +44,7 @@ class CloneRepositoryListener
             $step_name =   $step->name;
             $status = Submission::$FAILED;
             $output = $process->getErrorOutput();
+            $submission->updateStatus($status);
             $submission->updateOneResult($step_name, $status, $output);
         }
     }
