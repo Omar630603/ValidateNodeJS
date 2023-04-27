@@ -25,7 +25,7 @@ class ExecutionStepSeeder extends Seeder
             [
                 'name' => 'Unzip ZIP Files',
                 'commands' => json_encode([
-                    'unzip', '{{zipFileDir}}/*.zip', '-d', '{{tempDir}}',
+                    'unzip', '{{zipFileDir}}', '-d', '{{tempDir}}',
                 ]),
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -33,7 +33,7 @@ class ExecutionStepSeeder extends Seeder
             [
                 'name' => 'Remove ZIP Files',
                 'commands' => json_encode([
-                    'rm', '{{zipFileDir}}/*.zip',
+                    'rm', '-rf',  '{{zipFileDir}}',
                 ]),
                 'created_at' => now(),
                 'updated_at' => now(),

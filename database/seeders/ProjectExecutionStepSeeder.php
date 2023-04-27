@@ -20,7 +20,6 @@ class ProjectExecutionStepSeeder extends Seeder
 
         $clone_repo_execution_step_id = ExecutionStep::where('name', 'Clone Repository')->first()->id;
         $unzip_zip_files_execution_step_id = ExecutionStep::where('name', 'Unzip ZIP Files')->first()->id;
-        $remove_zip_files_execution_step_id = ExecutionStep::where('name', 'Remove ZIP Files')->first()->id;
         $checking_folder_structure_execution_step_id = ExecutionStep::where('name', 'Examine Folder Structure')->first()->id;
         $add_env_file_execution_step_id = ExecutionStep::where('name', 'Add .env File')->first()->id;
         $replace_package_json_execution_step_id = ExecutionStep::where('name', 'Replace package.json')->first()->id;
@@ -46,17 +45,7 @@ class ProjectExecutionStepSeeder extends Seeder
                 'execution_step_id' => $unzip_zip_files_execution_step_id,
                 'order' => 2,
                 'variables' => json_encode([
-                    '{{zipFileDir}}', '{{tempDir}}', '*'
-                ]),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-            [
-                'project_id' => $api_experiment_project_id,
-                'execution_step_id' => $remove_zip_files_execution_step_id,
-                'order' => 3,
-                'variables' => json_encode([
-                    '{{zipFileDir}}',
+                    '{{zipFileDir}}', '{{tempDir}}'
                 ]),
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -64,7 +53,7 @@ class ProjectExecutionStepSeeder extends Seeder
             [
                 'project_id' => $api_experiment_project_id,
                 'execution_step_id' => $checking_folder_structure_execution_step_id,
-                'order' => 4,
+                'order' => 3,
                 'variables' => json_encode([
                     '{{tempDir}}',
                 ]),
@@ -74,7 +63,7 @@ class ProjectExecutionStepSeeder extends Seeder
             [
                 'project_id' => $api_experiment_project_id,
                 'execution_step_id' => $add_env_file_execution_step_id,
-                'order' => 5,
+                'order' => 4,
                 'variables' => json_encode([
                     '{{envFile}}', '{{tempDir}}',
                 ]),
@@ -84,7 +73,7 @@ class ProjectExecutionStepSeeder extends Seeder
             [
                 'project_id' => $api_experiment_project_id,
                 'execution_step_id' => $replace_package_json_execution_step_id,
-                'order' => 6,
+                'order' => 5,
                 'variables' => json_encode([
                     '{{packageJson}}', '{{tempDir}}',
                 ]),
@@ -94,7 +83,7 @@ class ProjectExecutionStepSeeder extends Seeder
             [
                 'project_id' => $api_experiment_project_id,
                 'execution_step_id' => $copy_tests_folder_step_id,
-                'order' => 7,
+                'order' => 6,
                 'variables' => json_encode([
                     '{{testsDir}}', '{{tempDir}}',
                 ]),
@@ -104,7 +93,7 @@ class ProjectExecutionStepSeeder extends Seeder
             [
                 'project_id' => $api_experiment_project_id,
                 'execution_step_id' => $npm_install_execution_step_id,
-                'order' => 8,
+                'order' => 7,
                 'variables' => json_encode([
                     '{{options}}',
                 ]),
@@ -114,7 +103,7 @@ class ProjectExecutionStepSeeder extends Seeder
             [
                 'project_id' => $api_experiment_project_id,
                 'execution_step_id' => $npm_run_build_execution_step_id,
-                'order' => 9,
+                'order' => 8,
                 'variables' => null,
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -122,7 +111,7 @@ class ProjectExecutionStepSeeder extends Seeder
             [
                 'project_id' => $api_experiment_project_id,
                 'execution_step_id' => $npm_run_tests_execution_step_id,
-                'order' => 10,
+                'order' => 9,
                 'variables' => json_encode([
                     '{{testFile}}=api-testA01',
                     '{{testFile}}=web-testA01',
@@ -141,7 +130,7 @@ class ProjectExecutionStepSeeder extends Seeder
             [
                 'project_id' => $api_experiment_project_id,
                 'execution_step_id' => $delete_temp_directory_execution_step_id,
-                'order' => 11,
+                'order' => 10,
                 'variables' => json_encode([
                     '{{tempDir}}',
                 ]),
@@ -163,17 +152,7 @@ class ProjectExecutionStepSeeder extends Seeder
                 'execution_step_id' => $unzip_zip_files_execution_step_id,
                 'order' => 2,
                 'variables' => json_encode([
-                    '{{zipFileDir}}', '{{tempDir}}', '*'
-                ]),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-            [
-                'project_id' => $auth_experiment_project_id,
-                'execution_step_id' => $remove_zip_files_execution_step_id,
-                'order' => 3,
-                'variables' => json_encode([
-                    '{{zipFileDir}}',
+                    '{{zipFileDir}}', '{{tempDir}}'
                 ]),
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -181,7 +160,7 @@ class ProjectExecutionStepSeeder extends Seeder
             [
                 'project_id' => $auth_experiment_project_id,
                 'execution_step_id' => $checking_folder_structure_execution_step_id,
-                'order' => 4,
+                'order' => 3,
                 'variables' => json_encode([
                     '{{tempDir}}',
                 ]),
@@ -191,7 +170,7 @@ class ProjectExecutionStepSeeder extends Seeder
             [
                 'project_id' => $auth_experiment_project_id,
                 'execution_step_id' => $add_env_file_execution_step_id,
-                'order' => 5,
+                'order' => 4,
                 'variables' => json_encode([
                     '{{envFile}}', '{{tempDir}}',
                 ]),
@@ -201,7 +180,7 @@ class ProjectExecutionStepSeeder extends Seeder
             [
                 'project_id' => $auth_experiment_project_id,
                 'execution_step_id' => $replace_package_json_execution_step_id,
-                'order' => 6,
+                'order' => 5,
                 'variables' => json_encode([
                     '{{packageJson}}', '{{tempDir}}',
                 ]),
@@ -211,7 +190,7 @@ class ProjectExecutionStepSeeder extends Seeder
             [
                 'project_id' => $auth_experiment_project_id,
                 'execution_step_id' => $copy_tests_folder_step_id,
-                'order' => 7,
+                'order' => 6,
                 'variables' => json_encode([
                     '{{testsDir}}', '{{tempDir}}',
                 ]),
@@ -221,7 +200,7 @@ class ProjectExecutionStepSeeder extends Seeder
             [
                 'project_id' => $auth_experiment_project_id,
                 'execution_step_id' => $npm_install_execution_step_id,
-                'order' => 8,
+                'order' => 7,
                 'variables' => json_encode([
                     '{{options}}',
                 ]),
@@ -231,7 +210,7 @@ class ProjectExecutionStepSeeder extends Seeder
             [
                 'project_id' => $auth_experiment_project_id,
                 'execution_step_id' => $npm_run_build_execution_step_id,
-                'order' => 9,
+                'order' => 8,
                 'variables' => null,
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -239,7 +218,7 @@ class ProjectExecutionStepSeeder extends Seeder
             [
                 'project_id' => $auth_experiment_project_id,
                 'execution_step_id' => $npm_run_tests_execution_step_id,
-                'order' => 10,
+                'order' => 9,
                 'variables' => json_encode([
                     '{{testFile}}=api-testB01',
                     '{{testFile}}=web-testB01',
@@ -258,7 +237,7 @@ class ProjectExecutionStepSeeder extends Seeder
             [
                 'project_id' => $auth_experiment_project_id,
                 'execution_step_id' => $delete_temp_directory_execution_step_id,
-                'order' => 11,
+                'order' => 10,
                 'variables' => json_encode([
                     '{{tempDir}}',
                 ]),

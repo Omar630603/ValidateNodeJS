@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Events\CloneRepository\CloneRepositoryEvent;
+use App\Events\ExamineFolderStructure\ExamineFolderStructureEvent;
+use App\Events\UnzipZipFiles\UnzipZipFilesEvent;
 use App\Models\ExecutionStep;
 use App\Models\Project;
 use App\Models\ProjectExecutionStep;
@@ -123,8 +125,6 @@ class SubmissionController extends Controller
         if ($submission) {
             $steps = $submission->getExecutionSteps();
             $currentStep = $submission->getCurrentExecutionStep();
-            // $currentResults = json_encode(get_object_vars($submission->results));
-            // return view('submissions.show', compact('submission', 'steps', 'currentStep', 'currentResults'));
             return view('submissions.show', compact('submission', 'steps', 'currentStep'));
         }
         return redirect()->route('submissions');
@@ -158,34 +158,35 @@ class SubmissionController extends Controller
                     'results' => $submission->results,
                 ], 200);
             } else if ($submission->status === Submission::$PROCESSING) {
-                $step = $submission->getCurrentExecutionStep($request->step_id);
+                $step = $submission->getCurrentExecutionStep();
                 if ($step) {
                     if ($submission->results->{$step->executionStep->name}->status == Submission::$PENDING) {
                         if ($step->executionStep->name === ExecutionStep::$CLONE_REPOSITORY) {
                             $repoUrl = $submission->path;
-                            $tempDir = storage_path('app/public/tmp/submissions/' . $submission->user_id . '/' . $submission->project->title . '/' . $submission->id);
+                            $tempDir = $this->getTempDir($submission);
                             $this->lunchCloneRepositoryEvent($submission, $repoUrl, $tempDir, $step);
-                            // } else if ($step->executionStep->name === ExecutionStep::$UNZIP_ZIP_FILES) {
-                            //     $this->lunchUnzipZipFilesEvent();
-                            // } else if ($step->executionStep->name === ExecutionStep::$REMOVE_ZIP_FILES) {
-                            //     $this->lunchRemoveZipFilesEvent();
-                            // } else if ($step->executionStep->name === ExecutionStep::$EXAMINE_FOLDER_STRUCTURE) {
-                            //     $this->lunchExamineFolderStructureEvent();
-                            // } else if ($step->executionStep->name === ExecutionStep::$ADD_ENV_FILE) {
-                            //     $this->lunchAddEnvFileEvent();
-                            // } else if ($step->executionStep->name === ExecutionStep::$REPLACE_PACKAGE_JSON) {
-                            //     $this->lunchReplacePackageJsonEvent();
-                            // } else if ($step->executionStep->name === ExecutionStep::$COPY_TESTS_FOLDER) {
-                            //     $this->lunchCopyTestsFolderEvent();
-                            // } else if ($step->executionStep->name === ExecutionStep::$NPM_INSTALL) {
-                            //     $this->lunchNpmInstallEvent();
-                            // } else if ($step->executionStep->name === ExecutionStep::$NPM_RUN_BUILD) {
-                            //     $this->lunchNpmRunBuildEvent();
-                            // } else if ($step->executionStep->name === ExecutionStep::$NPM_RUN_TESTS) {
-                            //     $this->lunchNpmRunTestsEvent();
-                            // } else if ($step->executionStep->name === ExecutionStep::$DELETE_TEMP_DIRECTORY) {
-                            //     $this->lunchDeleteTempDirectoryEvent();
+                        } else if ($step->executionStep->name === ExecutionStep::$UNZIP_ZIP_FILES) {
+                            $zipFileDir = $submission->getMedia('submissions')->first()->getPath();
+                            $tempDir = $this->getTempDir($submission);
+                            $this->lunchUnzipZipFilesEvent($submission, $zipFileDir, $tempDir, $step);
+                        } else if ($step->executionStep->name === ExecutionStep::$EXAMINE_FOLDER_STRUCTURE) {
+                            $tempDir = $this->getTempDir($submission);
+                            $this->lunchExamineFolderStructureEvent();
                         }
+                        // else if ($step->executionStep->name === ExecutionStep::$ADD_ENV_FILE) {
+                        //     $this->lunchAddEnvFileEvent();
+                        // } else if ($step->executionStep->name === ExecutionStep::$REPLACE_PACKAGE_JSON) {
+                        //     $this->lunchReplacePackageJsonEvent();
+                        // } else if ($step->executionStep->name === ExecutionStep::$COPY_TESTS_FOLDER) {
+                        //     $this->lunchCopyTestsFolderEvent();
+                        // } else if ($step->executionStep->name === ExecutionStep::$NPM_INSTALL) {
+                        //     $this->lunchNpmInstallEvent();
+                        // } else if ($step->executionStep->name === ExecutionStep::$NPM_RUN_BUILD) {
+                        //     $this->lunchNpmRunBuildEvent();
+                        // } else if ($step->executionStep->name === ExecutionStep::$NPM_RUN_TESTS) {
+                        //     $this->lunchNpmRunTestsEvent();
+                        // } else if ($step->executionStep->name === ExecutionStep::$DELETE_TEMP_DIRECTORY) {
+                        //     $this->lunchDeleteTempDirectoryEvent();
                     }
                     if ($submission->results->{$step->executionStep->name}->status == Submission::$COMPLETED) {
                         return response()->json([
@@ -205,14 +206,15 @@ class SubmissionController extends Controller
                 }
                 return response()->json([
                     'message' => 'Step not found',
-                    'status' => $submission->status,
-                    'results' => $submission->results,
                 ], 404);
             }
         }
     }
 
-
+    private function getTempDir($submission)
+    {
+        return storage_path('app/public/tmp/submissions/' . $submission->user_id . '/' . $submission->project->title . '/' . $submission->id);
+    }
 
     private function is_dir_empty($dir)
     {
@@ -234,25 +236,23 @@ class SubmissionController extends Controller
         $commands = $step->executionStep->commands;
         $step_variables = $step->variables;
         $values = ["{{repoUrl}}" => $repoUrl, '{{tempDir}}' => $tempDir];
-        // change the command to the actual values in array_replace function
         $commands = $this->replaceCommandArraysWithValues($step_variables, $values, $step);
         event(new CloneRepositoryEvent($submission->id, $repoUrl, $tempDir, $commands));
     }
 
-    //     private function lunchUnzipZipFilesEvent()
-    //     {
-    //         event(new UnzipZipFilesEvent());
-    //     }
+    private function lunchUnzipZipFilesEvent($submission, $zipFileDir, $tempDir, $step)
+    {
+        $commands = $step->executionStep->commands;
+        $step_variables = $step->variables;
+        $values = ['{{zipFileDir}}' => $zipFileDir, '{{tempDir}}' => $tempDir];
+        $commands = $this->replaceCommandArraysWithValues($step_variables, $values, $step);
+        event(new UnzipZipFilesEvent($submission->id, $zipFileDir, $tempDir, $commands));
+    }
 
-    //     private function lunchRemoveZipFilesEvent()
-    //     {
-    //         event(new RemoveZipFilesEvent());
-    //     }
-
-    //     private function lunchExamineFolderStructureEvent()
-    //     {
-    //         event(new ExamineFolderStructureEvent());
-    //     }
+    private function lunchExamineFolderStructureEvent()
+    {
+        event(new ExamineFolderStructureEvent());
+    }
 
     //     private function lunchAddEnvFileEvent()
     //     {

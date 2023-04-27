@@ -4,6 +4,10 @@ namespace App\Providers;
 
 use App\Events\CloneRepository\CloneRepositoryEvent;
 use App\Events\CloneRepository\CloneRepositoryListener;
+use App\Events\UnzipZipFiles\UnzipZipFilesEvent;
+use App\Events\UnzipZipFiles\UnzipZipFilesListener;
+use App\Events\ExamineFolderStructure\ExamineFolderStructureEvent;
+use App\Events\ExamineFolderStructure\ExamineFolderStructureListener;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
@@ -22,6 +26,12 @@ class EventServiceProvider extends ServiceProvider
         ],
         CloneRepositoryEvent::class => [
             CloneRepositoryListener::class,
+        ],
+        UnzipZipFilesEvent::class => [
+            UnzipZipFilesListener::class,
+        ],
+        ExamineFolderStructureEvent::class => [
+            ExamineFolderStructureListener::class,
         ],
     ];
 

@@ -91,11 +91,17 @@
                     class="bg-gray-200 dark:bg-gray-900 border-secondary border-2 overflow-hidden shadow-sm sm:rounded-lg md:col-span-2 md:row-span-1 md:rounded-md md:shadow-md md:py-6 md:px-8 lg:px-12 xl:px-16">
                     <!-- content for the bigger column -->
 
-                    <div class="mb-5 w-100 bg-gray-600 sm:rounded-lg md:rounded-md" id="progress">
+                    <div class="m-5 w-100 bg-gray-600 sm:rounded-lg md:rounded-md" id="progress">
                         <div class="text-center w-[1%] h-5 bg-secondary text-white sm:rounded-lg md:rounded-md text-sm"
                             id="bar">0%</div>
                     </div>
-                    <div class="">
+                    <div id="loader"
+                        class="mx-5 mt-1 float-right hidden h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] text-secondary motion-reduce:animate-[spin_1.5s_linear_infinite]"
+                        role="status">
+                        <span
+                            class="!absolute !-m-px !h-px !w-px !overflow-hidden !whitespace-nowrap !border-0 !p-0 ![clip:rect(0,0,0,0)]">Loading...</span>
+                    </div>
+                    <div class="mx-5">
                         <p class="text-white text-xl" id="submission_message"></p>
                         <p class="text-white text-xl" id="submission_status"></p>
                     </div>
@@ -113,6 +119,35 @@
 
     @section('scripts')
     <script>
+
+    </script>
+    <script>
+        const submission_message = $('#submission_message');
+        const submission_status = $('#submission_status');
+        const submission_results = $('#submission_results');
+        const startElement = $(`.stepNames:contains(Start)`).closest('li');
+        const doneElement = $(`.stepNames:contains(Done)`).closest('li');
+        const loaderElement = $('#loader');
+
+        var stepsCount = 0;
+        var completedStepsCount = 1;
+
+        var currentSubmission = {};
+        currentSubmission.results = `<?php echo json_encode($submission->results); ?>`;
+        currentSubmission.status = '<?php echo $submission->status; ?>';
+        currentSubmission.message = '<?php echo $submission->message; ?>';
+
+        if (currentSubmission.results !== null) {
+            updateUI(currentSubmission);
+        }  
+  
+
+        startElement.find('#start_pending_icon').addClass('hidden');
+        startElement.find('span').addClass('text-secondary');
+        startElement.find('#start_success_icon').removeClass('hidden');
+
+        var stepNames = $('.stepNames');
+        
         function move(start = 0, end = 100) {
             var elem = document.getElementById("bar");
             var width = start;
@@ -127,35 +162,8 @@
                 elem.innerHTML = width  + "%";
               }
             }
-          }
-    </script>
-    <script>
-        const submission_message = $('#submission_message');
-        const submission_status = $('#submission_status');
-        const submission_results = $('#submission_results');
-        const startElement = $(`.stepNames:contains(Start)`).closest('li');
-        const doneElement = $(`.stepNames:contains(Done)`).closest('li');
-        
-        var stepsCount = 0;
-        var completedStepsCount = 1;
+        }
 
-        var step_id = '{{$currentStep?->execution_step_id}}';
-        var currentSubmission = {};
-        currentSubmission.results = <?php echo json_encode($submission->results); ?>;
-        currentSubmission.status = '<?php echo $submission->status; ?>';
-        currentSubmission.message = '<?php echo $submission->message; ?>';
-
-        if (currentSubmission.results !== null) {
-            updateUI(currentSubmission);
-        }  
-  
-
-        startElement.find('#start_pending_icon').addClass('hidden');
-        startElement.find('span').addClass('text-secondary');
-        startElement.find('#start_success_icon').removeClass('hidden');
-
-        var stepNames = $('.stepNames');
-        if (step_id == '' && '{{$submission->status}}' == 'pending') step_id = 1;
         function checkSubmissionProgress() {
             $.ajax({
                 url: '/submissions/process/submission/{{ $submission->id }}',
@@ -163,23 +171,23 @@
                 headers: {
                     'X-CSRF-TOKEN': '{{ csrf_token()}}'
                 },
-                data: {
-                    step_id: step_id
-                },
                 success: function(response) {
                     updateUI(response);
                     if(response.status == "processing"){
-                        step_id = response.next_step?.id;
-                        if (step_id !== undefined){
+                        if (response.next_step?.id !== undefined){
+                            loaderElement.removeClass('hidden');
                             setTimeout(checkSubmissionProgress, 1000);
                         }
                     }else if (response.status == "failed"){
                         updateUIFailedStatus(response);
                     }
                 },
-                error: function(error) {                  
-                    console.log(step_id);
+                error: function(error) { 
+                    error_response = {};
+                    error_response.status = "failed";
+                    error_response.message = "Something went wrong";
                     console.log(error);
+                    updateUIFailedStatus(error_response);
                 }
             });
         }
@@ -187,12 +195,14 @@
         checkSubmissionProgress();
 
         function updateUIFailedStatus(response){
+            loaderElement.addClass('hidden');
             doneElement.find('#done_pending_icon').addClass('hidden');
             doneElement.find('#done_failed_icon').removeClass('hidden');
             doneElement.find('span').addClass('text-red-400');
             submission_status.text("Submssion Status: " + response.status);
             submission_message.text("Submssion Message: " + response.message);
             move(0, 100);
+            $('#bar').removeClass('bg-secondary');
             $('#bar').addClass('bg-red-400');
         }
 
@@ -225,9 +235,8 @@
                     submission_results.append(`<div class="text-lg text-white mt-5 border p-5" id="submission_results_${stepData.stepID}">
                         <h1 class="text-md font-bold">${number}- ${stepName}</h1>
                         <p class="text-xs font-semibold text-secondary">Status: ${stepData.status}</p>
-                        <p class="text-xs font-semibold">Output: ${stepData.output}</p>
+                        <p class="text-xs font-semibold break-words">Output: ${stepData.output}</p>
                         </div>`);
-                    completedStepsCount++;
                     
                 } else if (stepData.status === 'failed') {
                     stepElement.find(`#${stepData.stepID}_pending_icon`).addClass('hidden');
@@ -238,7 +247,7 @@
                     submission_results.append(`<div class="text-lg text-white mt-5 border p-5" id="submission_results_${stepData.stepID}">
                         <h1 class="text-md font-bold">${number}- ${stepName}</h1>
                         <p class="text-xs font-semibold text-red-400">Status: ${stepData.status}</p>
-                        <p class="text-xs font-semibold">Output: ${stepData.output}</p>
+                        <p class="text-xs font-semibold break-words">Output: ${stepData.output}</p>
                         </div>`);
                 } else {
                     stepElement.find(`#${stepData.stepID}_pending_icon`).removeClass('hidden');
@@ -249,21 +258,23 @@
                     submission_results.append(`<div class="text-lg text-white mt-5 border p-5" id="submission_results_${stepData.stepID}">
                         <h1 class="text-md font-bold">${number}- ${stepName}</h1>
                         <p class="text-xs font-semibold text-gray-400">Status: ${stepData.status}</p>
-                        <p class="text-xs font-semibold text-gray-400">Output: ${stepData.output}</p>
+                        <p class="text-xs font-semibold text-gray-400 break-words">Output: ${stepData.output}</p>
                         </div>`);
                 }
                 number += 1;                
             }
-            // update the progress bar
+
+            move(0, (completedStepsCount / stepsCount ) * 100);
+
             submission_results.append(`<div class="text-lg text-white mt-5 border p-5" id="submission_results_done">
                 <h1 class="text-md font-bold">${number}- Done</h1>
                 <p class="text-xs font-semibold text-gray-400">Status: Pending</p>
-                <p class="text-xs font-semibold text-gray-400">Output:</p>
+                <p class="text-xs font-semibold text-gray-400 break-words">Output:</p>
                 </div>`);
 
         }
         
-        move(0, (completedStepsCount / stepsCount)* 100);
+        move(0, (completedStepsCount / stepsCount) * 100);
 
     </script>
     @endsection
