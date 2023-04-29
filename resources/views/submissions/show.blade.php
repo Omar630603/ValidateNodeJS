@@ -173,6 +173,7 @@
                 },
                 success: function(response) {
                     updateUI(response);
+                    move(0, (completedStepsCount / stepsCount) * 100);
                     if(response.status == "processing"){
                         if (response.next_step?.id !== undefined){
                             loaderElement.removeClass('hidden');
@@ -263,9 +264,6 @@
                 }
                 number += 1;                
             }
-
-            move(0, (completedStepsCount / stepsCount ) * 100);
-
             submission_results.append(`<div class="text-lg text-white mt-5 border p-5" id="submission_results_done">
                 <h1 class="text-md font-bold">${number}- Done</h1>
                 <p class="text-xs font-semibold text-gray-400">Status: Pending</p>
@@ -273,9 +271,6 @@
                 </div>`);
 
         }
-        
-        move(0, (completedStepsCount / stepsCount) * 100);
-
     </script>
     @endsection
     @endif

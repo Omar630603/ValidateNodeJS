@@ -71,7 +71,7 @@ class ProjectsDefaultFileStructureSeeder extends Seeder
                             'main.ejs' => '',
                         ],
                         'styles' => [
-                            'main.ejs' => '',
+                            'main.css' => '',
                         ],
                         'views' => [
                             'products' => [
@@ -107,6 +107,7 @@ class ProjectsDefaultFileStructureSeeder extends Seeder
                 'replacements' => json_encode([
                     '.env',
                     'tests',
+                    'package.json'
                 ]),
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -173,7 +174,7 @@ class ProjectsDefaultFileStructureSeeder extends Seeder
                             'main.ejs' => '',
                         ],
                         'styles' => [
-                            'main.ejs' => '',
+                            'main.css' => '',
                         ],
                         'views' => [
                             'auth' => [
@@ -206,7 +207,8 @@ class ProjectsDefaultFileStructureSeeder extends Seeder
                 ]),
                 'replacements' => json_encode([
                     '.env',
-                    'tests'
+                    'tests',
+                    'package.json'
                 ]),
                 'created_at' => now(),
                 'updated_at' => now(),

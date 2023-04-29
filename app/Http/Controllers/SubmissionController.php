@@ -16,28 +16,6 @@ class SubmissionController extends Controller
 {
     public function index(Request $request)
     {
-        // $step = Project::find(1)->projectExecutionSteps()->where('order', 1)->first();
-        // $commands = $step->executionStep->commands;
-        // $step_variables = $step->variables;
-        // $repoUrl = 'ok';
-        // $tempDir = 'ok';
-        // $values = ["{{repoUrl}}" => $repoUrl, '{{tempDir}}' => $tempDir];
-        // // change the command to the actual values in array_replace function
-        // // foreach ($step_variables as $variableValue) {
-        // //     foreach ($commands as $commandKey => $commandValue) {
-        // //         if ($commandValue === $variableValue) {
-        // //             $commands[$commandKey] = $values[$variableValue];
-        // //         }
-        // //     }
-        // // }
-        // $commands = array_reduce($step_variables, function ($commands, $variableValue) use ($values) {
-        //     return array_map(function ($command) use ($variableValue, $values) {
-        //         return $command === $variableValue ? $values[$variableValue] : $command;
-        //     }, $commands);
-        // }, $step->executionStep->commands);
-
-
-        // dd($commands, $step_variables);
         return view('submissions.index');
     }
 
@@ -171,7 +149,7 @@ class SubmissionController extends Controller
                             $this->lunchUnzipZipFilesEvent($submission, $zipFileDir, $tempDir, $step);
                         } else if ($step->executionStep->name === ExecutionStep::$EXAMINE_FOLDER_STRUCTURE) {
                             $tempDir = $this->getTempDir($submission);
-                            $this->lunchExamineFolderStructureEvent();
+                            $this->lunchExamineFolderStructureEvent($submission, $tempDir, $step);
                         }
                         // else if ($step->executionStep->name === ExecutionStep::$ADD_ENV_FILE) {
                         //     $this->lunchAddEnvFileEvent();
@@ -249,9 +227,13 @@ class SubmissionController extends Controller
         event(new UnzipZipFilesEvent($submission->id, $zipFileDir, $tempDir, $commands));
     }
 
-    private function lunchExamineFolderStructureEvent()
+    private function lunchExamineFolderStructureEvent($submission, $tempDir, $step)
     {
-        event(new ExamineFolderStructureEvent());
+        $commands = $step->executionStep->commands;
+        $step_variables = $step->variables;
+        $values = ['{{tempDir}}' => $tempDir];
+        $commands = $this->replaceCommandArraysWithValues($step_variables, $values, $step);
+        event(new ExamineFolderStructureEvent($submission->id,  $tempDir, $commands));
     }
 
     //     private function lunchAddEnvFileEvent()
