@@ -25,52 +25,61 @@ class ExamineFolderStructureListener
      */
     public function handle(ExamineFolderStructureEvent $event): void
     {
-
-        $submission = Submission::find($event->submissionId);
         Log::info("Examine folder structure from {$event->tempDir}");
-
-        $process = new Process($event->command);
-        $process->run();
+        $submission = Submission::find($event->submissionId);
         $step = ExecutionStep::where('name', ExecutionStep::$EXAMINE_FOLDER_STRUCTURE)->first();
         $step_name = $step->name;
-        if ($process->isSuccessful()) {
-            $projectStructure = $submission->project->defaultFileStructure;
+        $status = Submission::$PROCESSING;
+        $output = "Examine folder structure from {$event->tempDir}";
+        $submission->updateOneResult($step_name, $status, $output);
+        try {
+            // processing
+            $process = new Process($event->command);
+            $process->run();
+            if ($process->isSuccessful()) {
+                // completed
+                $projectStructure = $submission->project->defaultFileStructure;
+                $defaultStructure = $projectStructure->structure;
+                $excludedFolders = $projectStructure->excluded;
+                $replacementFolders = $projectStructure->replacements;
 
-            $defaultStructure = $projectStructure->structure;
-            $excludedFolders = $projectStructure->excluded;
-            $replacementFolders = $projectStructure->replacements;
+                $submissionStructure = $this->getDirectoryStructure($event->tempDir, $excludedFolders, $replacementFolders);
 
-            $submissionStructure = $this->getDirectoryStructure($event->tempDir, $excludedFolders, $replacementFolders);
-
-            $diff = $this->compare_file_structures($defaultStructure, $submissionStructure);
-            $missingFiles = [];
-            foreach ($diff as $key => $value) {
-                if (gettype($key) == 'integer') {
-                    if (!in_array($value, $excludedFolders)) array_push($missingFiles, $value);
-                } else {
-                    if (!in_array($key, $excludedFolders)) array_push($missingFiles, [$key => $value]);
+                $diff = $this->compare_file_structures($defaultStructure, $submissionStructure);
+                $missingFiles = [];
+                foreach ($diff as $key => $value) {
+                    if (gettype($key) == 'integer') {
+                        if (!in_array($value, $excludedFolders)) array_push($missingFiles, $value);
+                    } else {
+                        if (!in_array($key, $excludedFolders)) array_push($missingFiles, [$key => $value]);
+                    }
                 }
-            }
 
-            Log::info("Finished examining folder structure from {$event->tempDir}");
-            if (empty($missingFiles)) {
-                $status = Submission::$COMPLETED;
-                $output = "Finished examining folder structure from successfully";
-                $submission->updateOneResult($step_name, $status, $output);
+                Log::info("Finished examining folder structure from {$event->tempDir}");
+                if (empty($missingFiles)) {
+                    $status = Submission::$COMPLETED;
+                    $output = "Finished examining folder structure from successfully";
+                    $submission->updateOneResult($step_name, $status, $output);
+                } else {
+                    Log::error("Failed to examine folder structure from {$event->tempDir}");
+                    $status = Submission::$FAILED;
+                    $output = "Submitted project is missing the following files " . json_encode($missingFiles);
+                    $submission->updateStatus($status);
+                    Process::fromShellCommandline("rm -rf {$event->tempDir}")->run();
+                    $submission->updateOneResult($step_name, $status, $output);
+                }
             } else {
                 Log::error("Failed to examine folder structure from {$event->tempDir}");
-                $step_name = $step->name;
                 $status = Submission::$FAILED;
-                $output = "Submitted project is missing the following files " . json_encode($missingFiles);
+                $output = $process->getErrorOutput();
                 $submission->updateStatus($status);
                 Process::fromShellCommandline("rm -rf {$event->tempDir}")->run();
                 $submission->updateOneResult($step_name, $status, $output);
             }
-        } else {
+        } catch (\Throwable $th) {
             Log::error("Failed to examine folder structure from {$event->tempDir}");
-            $step_name = $step->name;
             $status = Submission::$FAILED;
-            $output = $process->getErrorOutput();
+            $output = $th->getMessage();
             $submission->updateStatus($status);
             Process::fromShellCommandline("rm -rf {$event->tempDir}")->run();
             $submission->updateOneResult($step_name, $status, $output);

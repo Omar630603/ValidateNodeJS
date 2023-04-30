@@ -44,9 +44,9 @@ return [
             'throw' => false,
         ],
 
-        'public_projects_images' => [
+        'public_projects_files' => [
             'driver' => 'local',
-            'root' => storage_path('app/public/projects_images'),
+            'root' => storage_path('app/public/projects'),
             'url' => env('APP_URL') . '/storage',
             'visibility' => 'public',
             'throw' => false,

@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\AddEnvFile\AddEnvFileEvent;
 use App\Events\CloneRepository\CloneRepositoryEvent;
 use App\Events\ExamineFolderStructure\ExamineFolderStructureEvent;
+use App\Events\ReplacePackageJson\ReplacePackageJsonEvent;
 use App\Events\UnzipZipFiles\UnzipZipFilesEvent;
 use App\Models\ExecutionStep;
 use App\Models\Project;
@@ -112,7 +114,7 @@ class SubmissionController extends Controller
     {
         $submission = Submission::find($submission_id);
         if ($submission) {
-            // the first stage of the submission change the status and initialize the results
+            $completion_percentage = round($submission->getTotalCompletedSteps() / $submission->getTotalSteps() * 100);
             if ($submission->status === Submission::$PENDING) {
                 $submission->initializeResults();
                 $submission->updateStatus(Submission::$PROCESSING);
@@ -122,18 +124,21 @@ class SubmissionController extends Controller
                     'status' => $submission->status,
                     'results' => $submission->results,
                     'next_step' => $currentStep,
+                    'completion_percentage' => $completion_percentage,
                 ], 200);
             } else if ($submission->status === Submission::$COMPLETED) {
                 return response()->json([
                     'message' => 'Submission has completed',
                     'status' => $submission->status,
                     'results' => $submission->results,
+                    'completion_percentage' => $completion_percentage,
                 ], 200);
             } else if ($submission->status === Submission::$FAILED) {
                 return response()->json([
                     'message' => 'Submission has failed',
                     'status' => $submission->status,
                     'results' => $submission->results,
+                    'completion_percentage' => $completion_percentage,
                 ], 200);
             } else if ($submission->status === Submission::$PROCESSING) {
                 $step = $submission->getCurrentExecutionStep();
@@ -150,12 +155,17 @@ class SubmissionController extends Controller
                         } else if ($step->executionStep->name === ExecutionStep::$EXAMINE_FOLDER_STRUCTURE) {
                             $tempDir = $this->getTempDir($submission);
                             $this->lunchExamineFolderStructureEvent($submission, $tempDir, $step);
+                        } else if ($step->executionStep->name === ExecutionStep::$ADD_ENV_FILE) {
+                            // "{{envFile}}", "{{tempDir}}"
+                            $tempDir = $this->getTempDir($submission);
+                            $envFile = $submission->project->getMedia('project_files')->where('file_name', '.env')->first()->getPath();
+                            $this->lunchAddEnvFileEvent($submission, $tempDir, $envFile, $step);
+                        } else if ($step->executionStep->name === ExecutionStep::$REPLACE_PACKAGE_JSON) {
+                            $tempDir = $this->getTempDir($submission);
+                            $packageJson = $submission->project->getMedia('project_files')->where('file_name', 'package.json')->first()->getPath();
+                            $this->lunchReplacePackageJsonEvent($submission, $tempDir, $packageJson, $step);
                         }
-                        // else if ($step->executionStep->name === ExecutionStep::$ADD_ENV_FILE) {
-                        //     $this->lunchAddEnvFileEvent();
-                        // } else if ($step->executionStep->name === ExecutionStep::$REPLACE_PACKAGE_JSON) {
-                        //     $this->lunchReplacePackageJsonEvent();
-                        // } else if ($step->executionStep->name === ExecutionStep::$COPY_TESTS_FOLDER) {
+                        // else if ($step->executionStep->name === ExecutionStep::$COPY_TESTS_FOLDER) {
                         //     $this->lunchCopyTestsFolderEvent();
                         // } else if ($step->executionStep->name === ExecutionStep::$NPM_INSTALL) {
                         //     $this->lunchNpmInstallEvent();
@@ -172,6 +182,7 @@ class SubmissionController extends Controller
                             'status' => $submission->status,
                             'results' => $submission->results,
                             'next_step' => $submission->getNextExecutionStep($request->step_id),
+                            'completion_percentage' => $completion_percentage,
                         ], 200);
                     } else {
                         return response()->json([
@@ -179,12 +190,17 @@ class SubmissionController extends Controller
                             'status' => $submission->status,
                             'results' => $submission->results,
                             'next_step' => $step,
+                            'completion_percentage' => $completion_percentage,
                         ], 200);
                     }
                 }
                 return response()->json([
-                    'message' => 'Step not found',
-                ], 404);
+                    'message' => 'Submission is processing meanwhile there is no step to execute',
+                    'status' => $submission->status,
+                    'results' => $submission->results,
+                    'next_step' => null,
+                    'completion_percentage' => $completion_percentage,
+                ], 200);
             }
         }
     }
@@ -233,18 +249,26 @@ class SubmissionController extends Controller
         $step_variables = $step->variables;
         $values = ['{{tempDir}}' => $tempDir];
         $commands = $this->replaceCommandArraysWithValues($step_variables, $values, $step);
-        event(new ExamineFolderStructureEvent($submission->id,  $tempDir, $commands));
+        event(new ExamineFolderStructureEvent($submission->id, $tempDir, $commands));
     }
 
-    //     private function lunchAddEnvFileEvent()
-    //     {
-    //         event(new AddEnvFileEvent());
-    //     }
+    private function lunchAddEnvFileEvent($submission, $tempDir, $envFile, $step)
+    {
+        $commands = $step->executionStep->commands;
+        $step_variables = $step->variables;
+        $values = ['{{envFile}}' => $envFile, '{{tempDir}}' => $tempDir];
+        $commands = $this->replaceCommandArraysWithValues($step_variables, $values, $step);
+        event(new AddEnvFileEvent($submission->id, $envFile, $tempDir, $commands));
+    }
 
-    //     private function lunchReplacePackageJsonEvent()
-    //     {
-    //         event(new ReplacePackageJsonEvent());
-    //     }
+    private function lunchReplacePackageJsonEvent($submission, $tempDir, $packageJson, $step)
+    {
+        $commands = $step->executionStep->commands;
+        $step_variables = $step->variables;
+        $values = ['{{packageJson}}' => $packageJson, '{{tempDir}}' => $tempDir];
+        $commands = $this->replaceCommandArraysWithValues($step_variables, $values, $step);
+        event(new ReplacePackageJsonEvent($submission->id, $packageJson, $tempDir, $commands));
+    }
 
     //     private function lunchCopyTestsFolderEvent()
     //     {

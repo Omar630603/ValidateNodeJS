@@ -8,6 +8,10 @@ use App\Events\UnzipZipFiles\UnzipZipFilesEvent;
 use App\Events\UnzipZipFiles\UnzipZipFilesListener;
 use App\Events\ExamineFolderStructure\ExamineFolderStructureEvent;
 use App\Events\ExamineFolderStructure\ExamineFolderStructureListener;
+use App\Events\AddEnvFile\AddEnvFileEvent;
+use App\Events\AddEnvFile\AddEnvFileListener;
+use App\Events\ReplacePackageJson\ReplacePackageJsonEvent;
+use App\Events\ReplacePackageJson\ReplacePackageJsonListener;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
@@ -32,6 +36,12 @@ class EventServiceProvider extends ServiceProvider
         ],
         ExamineFolderStructureEvent::class => [
             ExamineFolderStructureListener::class,
+        ],
+        AddEnvFileEvent::class => [
+            AddEnvFileListener::class,
+        ],
+        ReplacePackageJsonEvent::class => [
+            ReplacePackageJsonListener::class,
         ],
     ];
 

@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Events\UnzipZipFiles;
+namespace App\Events\AddEnvFile;
 
-use App\Events\UnzipZipFiles\UnzipZipFilesEvent;
+use App\Events\AddEnvFile\AddEnvFileEvent;
 use App\Models\ExecutionStep;
 use App\Models\Submission;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -10,7 +10,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\Process\Process;
 
-class UnzipZipFilesListener
+class AddEnvFileListener
 {
     /**
      * Create the event listener.
@@ -23,41 +23,38 @@ class UnzipZipFilesListener
     /**
      * Handle the event.
      */
-    public function handle(UnzipZipFilesEvent $event): void
+    public function handle(AddEnvFileEvent $event): void
     {
-        Log::info("Unzipping {$event->zipFileDir} into {$event->tempDir}");
+        Log::info("Adding env file {$event->envFile} into {$event->tempDir}");
         $submission = Submission::find($event->submissionId);
-        $step = ExecutionStep::where('name', ExecutionStep::$UNZIP_ZIP_FILES)->first();
+        $step = ExecutionStep::where('name', ExecutionStep::$ADD_ENV_FILE)->first();
         $step_name = $step->name;
         $status = Submission::$PROCESSING;
-        $output = "Unzipping {$event->zipFileDir}";
+        $output = "Adding env file {$event->envFile}";
         $submission->updateOneResult($step_name, $status, $output);
         try {
             // processing
             $process = new Process($event->command);
             $process->run();
             if ($process->isSuccessful()) {
-                Log::info("Unzipped {$event->zipFileDir} into {$event->tempDir}");
+                Log::info("Added env file {$event->envFile} into {$event->tempDir}");
                 $status = Submission::$COMPLETED;
-                $output = "Unzipped";
-                Process::fromShellCommandline("rm -rf {$event->zipFileDir}")->run();
+                $output = "Added env file";
                 $submission->updateOneResult($step_name, $status, $output);
             } else {
-                Log::error("Failed to unzip {$event->zipFileDir}");
+                Log::error("Failed to add env file {$event->envFile}");
                 $status = Submission::$FAILED;
                 $output = $process->getErrorOutput();
                 $submission->updateStatus($status);
-                Process::fromShellCommandline("rm -rf {$event->zipFileDir}")->run();
                 Process::fromShellCommandline("rm -rf {$event->tempDir}")->run();
                 $submission->updateOneResult($step_name, $status, $output);
             }
         } catch (\Throwable $th) {
             // failed
-            Log::error("Failed to unzip {$event->zipFileDir}");
+            Log::error("Failed to add env file {$event->envFile}");
             $status = Submission::$FAILED;
             $output = $th->getMessage();
             $submission->updateStatus($status);
-            Process::fromShellCommandline("rm -rf {$event->zipFileDir}")->run();
             Process::fromShellCommandline("rm -rf {$event->tempDir}")->run();
             $submission->updateOneResult($step_name, $status, $output);
         }

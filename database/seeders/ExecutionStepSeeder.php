@@ -49,7 +49,7 @@ class ExecutionStepSeeder extends Seeder
             [
                 'name' => 'Add .env File',
                 'commands' => json_encode([
-                    'cp', '{{envFile}}', '{{tempDir}}/.env',
+                    'cp', '-r', '{{envFile}}', '{{tempDir}}',
                 ]),
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -57,7 +57,7 @@ class ExecutionStepSeeder extends Seeder
             [
                 'name' => 'Replace package.json',
                 'commands' => json_encode([
-                    'cp', '{{packageJson}}', '{{tempDir}}/package.json',
+                    'cp', '-r', '{{packageJson}}', '{{tempDir}}',
                 ]),
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -65,7 +65,7 @@ class ExecutionStepSeeder extends Seeder
             [
                 'name' => "Copy 'tests' Folder",
                 'commands' => json_encode([
-                    'cp', '-r', '{{testsDir}}', '{{tempDir}}/tests',
+                    'cp', '-r', '{{testsDir}}', '{{tempDir}}',
                 ]),
                 'created_at' => now(),
                 'updated_at' => now(),

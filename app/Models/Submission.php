@@ -145,4 +145,23 @@ class Submission extends Model implements HasMedia
         });
         return $next_step;
     }
+
+    public function getTotalSteps()
+    {
+        return $this->getExecutionSteps()->count();
+    }
+
+    public function getTotalCompletedSteps()
+    {
+        $results = $this->results;
+        $completed_steps = 0;
+        if ($results != null) {
+            foreach ($results as $result) {
+                if ($result->status == self::$COMPLETED) {
+                    $completed_steps++;
+                }
+            }
+        }
+        return $completed_steps;
+    }
 }

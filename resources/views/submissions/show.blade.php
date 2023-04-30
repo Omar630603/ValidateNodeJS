@@ -128,10 +128,8 @@
         const startElement = $(`.stepNames:contains(Start)`).closest('li');
         const doneElement = $(`.stepNames:contains(Done)`).closest('li');
         const loaderElement = $('#loader');
-
-        var stepsCount = 0;
-        var completedStepsCount = 1;
-
+        
+        var completion_percentage = 0;
         var currentSubmission = {};
         currentSubmission.results = `<?php echo json_encode($submission->results); ?>`;
         currentSubmission.status = '<?php echo $submission->status; ?>';
@@ -173,11 +171,17 @@
                 },
                 success: function(response) {
                     updateUI(response);
-                    move(0, (completedStepsCount / stepsCount) * 100);
+                    if (completion_percentage !=  response.completion_percentage){
+                        completion_percentage = response.completion_percentage;
+                        move(0, response.completion_percentage);
+                    }
                     if(response.status == "processing"){
                         if (response.next_step?.id !== undefined){
                             loaderElement.removeClass('hidden');
-                            setTimeout(checkSubmissionProgress, 1000);
+                            setTimeout(checkSubmissionProgress, 3000);
+                        }else{
+                            loaderElement.addClass('hidden');
+                            updateUIFailedStatus(response);
                         }
                     }else if (response.status == "failed"){
                         updateUIFailedStatus(response);
@@ -216,8 +220,6 @@
             arr.sort((a, b) => parseInt(a[1].stepID) - parseInt(b[1].stepID));
             results = Object.fromEntries(arr);
             
-            stepsCount = Object.keys(results).length;
-
             submission_results.append('<p class="text-center m-0 p-0">Results Summary</p>'); 
             submission_results.append(`<div class="text-lg text-white mt-5 border p-5" id="submission_results_start">
                         <h1 class="text-md font-bold">1- Start</h1>
@@ -228,40 +230,32 @@
             for (const [stepName, stepData] of Object.entries(results)) {
                 const stepElement = $(`.stepNames:contains(${stepName})`).closest('li');
                 if (stepData.status === 'completed') {
+                    stausClass = 'text-secondary';
+                    outputClass = 'break-words';
                     stepElement.find(`#${stepData.stepID}_pending_icon`).addClass('hidden');
                     stepElement.find(`#${stepData.stepID}_success_icon`).removeClass('hidden');
                     stepElement.find(`#${stepData.stepID}_failed_icon`).addClass('hidden');
                     stepElement.find('span').addClass('text-secondary');
-
-                    submission_results.append(`<div class="text-lg text-white mt-5 border p-5" id="submission_results_${stepData.stepID}">
-                        <h1 class="text-md font-bold">${number}- ${stepName}</h1>
-                        <p class="text-xs font-semibold text-secondary">Status: ${stepData.status}</p>
-                        <p class="text-xs font-semibold break-words">Output: ${stepData.output}</p>
-                        </div>`);
-                    
                 } else if (stepData.status === 'failed') {
+                    stausClass = 'text-red-400';
+                    outputClass = 'break-words';
                     stepElement.find(`#${stepData.stepID}_pending_icon`).addClass('hidden');
                     stepElement.find(`#${stepData.stepID}_success_icon`).addClass('hidden');
                     stepElement.find(`#${stepData.stepID}_failed_icon`).removeClass('hidden');
                     stepElement.find('span').addClass('text-red-400');
-
-                    submission_results.append(`<div class="text-lg text-white mt-5 border p-5" id="submission_results_${stepData.stepID}">
-                        <h1 class="text-md font-bold">${number}- ${stepName}</h1>
-                        <p class="text-xs font-semibold text-red-400">Status: ${stepData.status}</p>
-                        <p class="text-xs font-semibold break-words">Output: ${stepData.output}</p>
-                        </div>`);
                 } else {
+                    stausClass = 'text-gray-400';
+                    outputClass = 'text-gray-400 break-words';
                     stepElement.find(`#${stepData.stepID}_pending_icon`).removeClass('hidden');
                     stepElement.find(`#${stepData.stepID}_success_icon`).addClass('hidden');
                     stepElement.find(`#${stepData.stepID}_failed_icon`).addClass('hidden');
                     stepElement.find('span').addClass('text-gray-400');
-
-                    submission_results.append(`<div class="text-lg text-white mt-5 border p-5" id="submission_results_${stepData.stepID}">
-                        <h1 class="text-md font-bold">${number}- ${stepName}</h1>
-                        <p class="text-xs font-semibold text-gray-400">Status: ${stepData.status}</p>
-                        <p class="text-xs font-semibold text-gray-400 break-words">Output: ${stepData.output}</p>
-                        </div>`);
                 }
+                submission_results.append(`<div class="text-lg text-white mt-5 border p-5" id="submission_results_${stepData.stepID}">
+                        <h1 class="text-md font-bold">${number}- ${stepName}</h1>
+                        <p class="text-xs font-semibold ${stausClass}">Status: ${stepData.status}</p>
+                        <p class="text-xs font-semibold ${outputClass}">Output: ${stepData.output}</p>
+                        </div>`);
                 number += 1;                
             }
             submission_results.append(`<div class="text-lg text-white mt-5 border p-5" id="submission_results_done">
@@ -269,7 +263,6 @@
                 <p class="text-xs font-semibold text-gray-400">Status: Pending</p>
                 <p class="text-xs font-semibold text-gray-400 break-words">Output:</p>
                 </div>`);
-
         }
     </script>
     @endsection
