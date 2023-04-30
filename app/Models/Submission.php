@@ -26,6 +26,7 @@ class Submission extends Model implements HasMedia
         'path',
         'status',
         'results',
+        'attempts',
     ];
 
     protected $casts = [
@@ -89,6 +90,7 @@ class Submission extends Model implements HasMedia
                 'output' => '',
             ];
         }
+        $this->attempts = $this->attempts + 1;
         $this->updateResults($results);
     }
 

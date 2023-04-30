@@ -13,6 +13,7 @@ use App\Models\ProjectExecutionStep;
 use App\Models\Submission;
 use App\Models\TemporaryFile;
 use Illuminate\Http\Request;
+use Symfony\Component\Process\Process;
 
 class SubmissionController extends Controller
 {
@@ -202,6 +203,22 @@ class SubmissionController extends Controller
                     'completion_percentage' => $completion_percentage,
                 ], 200);
             }
+        }
+    }
+
+    public function refresh(Request $request, $submission_id)
+    {
+        $submission = Submission::find($submission_id);
+        if ($submission) {
+            $submission->updateStatus(Submission::$PENDING);
+            $submission->initializeResults();
+            Process::fromShellCommandline('rm -rf ' . $this->getTempDir($submission))->run();
+            return response()->json([
+                'message' => 'Submission has been refreshed',
+                'status' => $submission->status,
+                'results' => $submission->results,
+                'completion_percentage' => 0,
+            ], 200);
         }
     }
 

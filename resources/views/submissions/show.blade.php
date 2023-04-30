@@ -101,6 +101,10 @@
                         <span
                             class="!absolute !-m-px !h-px !w-px !overflow-hidden !whitespace-nowrap !border-0 !p-0 ![clip:rect(0,0,0,0)]">Loading...</span>
                     </div>
+                    <div id="refresh"
+                        class="hidden float-right cursor-pointer mx-5 mt-1 motion-reduce:animate-[spin_1.5s_linear_infinite]">
+                        <x-refresh_icon class="h-8 w-8" svgWidth='2rem' svgHeight='2rem' />
+                    </div>
                     <div class="mx-5">
                         <p class="text-white text-xl" id="submission_message"></p>
                         <p class="text-white text-xl" id="submission_status"></p>
@@ -119,16 +123,17 @@
 
     @section('scripts')
     <script>
-
-    </script>
-    <script>
         const submission_message = $('#submission_message');
         const submission_status = $('#submission_status');
         const submission_results = $('#submission_results');
         const startElement = $(`.stepNames:contains(Start)`).closest('li');
         const doneElement = $(`.stepNames:contains(Done)`).closest('li');
         const loaderElement = $('#loader');
+        const refreshElement = $('#refresh');
+        const barElement = $('#bar');
         
+        var submission_results_after = '';
+        var allowedToRefresh = true;
         var completion_percentage = 0;
         var currentSubmission = {};
         currentSubmission.results = `<?php echo json_encode($submission->results); ?>`;
@@ -185,6 +190,10 @@
                         }
                     }else if (response.status == "failed"){
                         updateUIFailedStatus(response);
+                    }else if (response.status == "completed"){
+                        loaderElement.addClass('hidden');
+                        updateUI(response);
+                        updateUICompletedStatus(response);
                     }
                 },
                 error: function(error) { 
@@ -207,11 +216,81 @@
             submission_status.text("Submssion Status: " + response.status);
             submission_message.text("Submssion Message: " + response.message);
             move(0, 100);
-            $('#bar').removeClass('bg-secondary');
-            $('#bar').addClass('bg-red-400');
+            barElement.removeClass('bg-secondary');
+            barElement.addClass('bg-red-400');
+
+            refreshElement.removeClass('hidden');
+            if (allowedToRefresh){
+                refreshElement.click(function(){
+                    allowedToRefresh = false;
+                    requestRefresh();
+                });
+            }
         }
 
-        function updateUI(response){
+        function requestRefresh() {
+            refreshElement.addClass('animate-spin');
+            restartUI();
+            $.ajax({
+                url: '/submissions/refresh/submission/{{ $submission->id }}',
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token()}}'
+                },
+                success: function(response) {
+                    refreshElement.removeClass('animate-spin');
+                    refreshElement.addClass('hidden');
+                    allowedToRefresh = true;
+                    barElement.removeClass('bg-red-400');
+                    barElement.addClass('bg-secondary');
+                    checkSubmissionProgress();
+                },
+                error: function(error) { 
+                    error_response = {};
+                    error_response.status = "failed";
+                    error_response.message = "Something went wrong";
+                    console.log(error);
+                    updateUIFailedStatus(error_response);
+                }
+            });
+        }
+
+        function restartUI() {
+            startElement.find('#start_pending_icon').removeClass('hidden');
+            startElement.find('#start_success_icon').addClass('hidden');
+            startElement.find('span').removeClass('text-secondary');
+            startElement.find('span').removeClass('text-red-400');
+            doneElement.find('#done_pending_icon').removeClass('hidden');
+            doneElement.find('#done_failed_icon').addClass('hidden');
+            doneElement.find('#done_success_icon').addClass('hidden');
+            doneElement.find('span').removeClass('text-secondary');
+            doneElement.find('span').removeClass('text-red-400');
+            submission_results.empty();
+            submission_status.text("Submssion Status: "); 
+            submission_message.text("Submssion Message: ");
+            move(0, 0);
+
+            if (submission_results_after != '') {
+                response = {};
+                response.status = "Restarting";
+                response.message = "Restarting...";
+                response.results = submission_results_after;
+                updateUI(response, true);
+            }
+        }
+
+        function updateUICompletedStatus(response){
+            doneElement.find('#done_pending_icon').addClass('hidden');
+            doneElement.find('#done_success_icon').removeClass('hidden');
+            doneElement.find('span').addClass('text-secondary');
+            submission_status.text("Submssion Status: " + response.status);
+            submission_message.text("Submssion Message: " + response.message);
+            move(0, 100);
+            barElement.removeClass('bg-secondary');
+            barElement.addClass('bg-green-400');
+        }
+
+        function updateUI(response, restart = false){
             number = 2;
             submission_results.empty();
             submission_status.text("Submssion Status: " + response.status); 
@@ -226,9 +305,15 @@
                         <p class="text-xs font-semibold text-secondary-400">Status: Done</p>
                         <p class="text-xs font-semibold">Output: Submission has been initialized and ready to process</p>
                         </div>`);
-
+            
+            submission_results_after = response.results;
             for (const [stepName, stepData] of Object.entries(results)) {
                 const stepElement = $(`.stepNames:contains(${stepName})`).closest('li');
+                if (restart == true) {
+                    stepData.status = 'pending';
+                    stepElement.find('span').removeClass('text-red-400');
+                    stepElement.find('span').removeClass('text-secondary');
+                }
                 if (stepData.status === 'completed') {
                     stausClass = 'text-secondary';
                     outputClass = 'break-words';
