@@ -7,8 +7,8 @@
     </x-slot>
     @elseif(request()->routeIs('submissions.show'))
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-            {{ __('Submission NO#').$submission->id.(' of project: ') . $submission->project->title }}
+        <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight" id="submission_number">
+            {{ __('Submission NO#').$submission->id.__(' of Project: ') . $submission->project->title .__(' attempt NO#: ').$submission->attempts }}
         </h2>
     </x-slot>
 
@@ -131,7 +131,8 @@
         const loaderElement = $('#loader');
         const refreshElement = $('#refresh');
         const barElement = $('#bar');
-        
+        const submission_number = $('#submission_number');
+         
         var submission_results_after = '';
         var allowedToRefresh = true;
         var completion_percentage = 0;
@@ -143,11 +144,6 @@
         if (currentSubmission.results !== null) {
             updateUI(currentSubmission);
         }  
-  
-
-        startElement.find('#start_pending_icon').addClass('hidden');
-        startElement.find('span').addClass('text-secondary');
-        startElement.find('#start_success_icon').removeClass('hidden');
 
         var stepNames = $('.stepNames');
         
@@ -183,7 +179,7 @@
                     if(response.status == "processing"){
                         if (response.next_step?.id !== undefined){
                             loaderElement.removeClass('hidden');
-                            setTimeout(checkSubmissionProgress, 3000);
+                            setTimeout(checkSubmissionProgress, 1000);
                         }else{
                             loaderElement.addClass('hidden');
                             updateUIFailedStatus(response);
@@ -222,10 +218,18 @@
             refreshElement.removeClass('hidden');
             if (allowedToRefresh){
                 refreshElement.click(function(){
-                    allowedToRefresh = false;
+                    move(0, 0);
                     requestRefresh();
+                    allowedToRefresh = false;
                 });
             }
+
+            $("#submission_results_done").children('p').text("Status: " + response.status);
+            $("#submission_results_done").children('p').removeClass("text-gray-400");
+            $("#submission_results_done").children('p').removeClass("text-secondary");
+            $("#submission_results_done").children('p').addClass("text-red-400");
+            $("#submission_results_done").children('p').next().text("Message: " + response.message);
+            $("#submission_results_done").children('p').next().removeClass("text-red-400");
         }
 
         function requestRefresh() {
@@ -243,6 +247,11 @@
                     allowedToRefresh = true;
                     barElement.removeClass('bg-red-400');
                     barElement.addClass('bg-secondary');
+                    // relplace the submission number of attempts with the new one
+                    var old_submission_number = submission_number.text();
+                    // regex to replace the text attempt NO# with the new one
+                    var new_submission_number = old_submission_number.replace(/\d+/g, response.attempts);
+                    submission_number.text(new_submission_number);
                     checkSubmissionProgress();
                 },
                 error: function(error) { 
@@ -268,7 +277,6 @@
             submission_results.empty();
             submission_status.text("Submssion Status: "); 
             submission_message.text("Submssion Message: ");
-            move(0, 0);
 
             if (submission_results_after != '') {
                 response = {};
@@ -288,6 +296,12 @@
             move(0, 100);
             barElement.removeClass('bg-secondary');
             barElement.addClass('bg-green-400');
+            $("#submission_results_done").children('p').text("Status: " + response.status);
+            $("#submission_results_done").children('p').removeClass("text-red-400");
+            $("#submission_results_done").children('p').removeClass("text-gray-400");
+            $("#submission_results_done").children('p').addClass("text-secondary");
+            $("#submission_results_done").children('p').next().text("Message: " + response.message);
+            $("#submission_results_done").children('p').next().removeClass("text-secondary");
         }
 
         function updateUI(response, restart = false){
@@ -299,6 +313,9 @@
             arr.sort((a, b) => parseInt(a[1].stepID) - parseInt(b[1].stepID));
             results = Object.fromEntries(arr);
             
+            startElement.find('#start_pending_icon').addClass('hidden');
+            startElement.find('span').addClass('text-secondary');
+            startElement.find('#start_success_icon').removeClass('hidden');
             submission_results.append('<p class="text-center m-0 p-0">Results Summary</p>'); 
             submission_results.append(`<div class="text-lg text-white mt-5 border p-5" id="submission_results_start">
                         <h1 class="text-md font-bold">1- Start</h1>

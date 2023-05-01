@@ -12,6 +12,8 @@ use App\Events\AddEnvFile\AddEnvFileEvent;
 use App\Events\AddEnvFile\AddEnvFileListener;
 use App\Events\ReplacePackageJson\ReplacePackageJsonEvent;
 use App\Events\ReplacePackageJson\ReplacePackageJsonListener;
+use App\Events\CopyTestsFolder\CopyTestsFolderEvent;
+use App\Events\CopyTestsFolder\CopyTestsFolderListener;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
@@ -42,6 +44,9 @@ class EventServiceProvider extends ServiceProvider
         ],
         ReplacePackageJsonEvent::class => [
             ReplacePackageJsonListener::class,
+        ],
+        CopyTestsFolderEvent::class => [
+            CopyTestsFolderListener::class,
         ],
     ];
 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Events\AddEnvFile\AddEnvFileEvent;
 use App\Events\CloneRepository\CloneRepositoryEvent;
+use App\Events\CopyTestsFolder\CopyTestsFolderEvent;
 use App\Events\ExamineFolderStructure\ExamineFolderStructureEvent;
 use App\Events\ReplacePackageJson\ReplacePackageJsonEvent;
 use App\Events\UnzipZipFiles\UnzipZipFilesEvent;
@@ -165,10 +166,10 @@ class SubmissionController extends Controller
                             $tempDir = $this->getTempDir($submission);
                             $packageJson = $submission->project->getMedia('project_files')->where('file_name', 'package.json')->first()->getPath();
                             $this->lunchReplacePackageJsonEvent($submission, $tempDir, $packageJson, $step);
-                        }
-                        // else if ($step->executionStep->name === ExecutionStep::$COPY_TESTS_FOLDER) {
-                        //     $this->lunchCopyTestsFolderEvent();
-                        // } else if ($step->executionStep->name === ExecutionStep::$NPM_INSTALL) {
+                        } else if ($step->executionStep->name === ExecutionStep::$COPY_TESTS_FOLDER) {
+
+                            $this->lunchCopyTestsFolderEvent();
+                        } //else if ($step->executionStep->name === ExecutionStep::$NPM_INSTALL) {
                         //     $this->lunchNpmInstallEvent();
                         // } else if ($step->executionStep->name === ExecutionStep::$NPM_RUN_BUILD) {
                         //     $this->lunchNpmRunBuildEvent();
@@ -217,6 +218,7 @@ class SubmissionController extends Controller
                 'message' => 'Submission has been refreshed',
                 'status' => $submission->status,
                 'results' => $submission->results,
+                'attempts' => $submission->attempts,
                 'completion_percentage' => 0,
             ], 200);
         }
@@ -287,10 +289,10 @@ class SubmissionController extends Controller
         event(new ReplacePackageJsonEvent($submission->id, $packageJson, $tempDir, $commands));
     }
 
-    //     private function lunchCopyTestsFolderEvent()
-    //     {
-    //         event(new CopyTestsFolderEvent());
-    //     }
+    private function lunchCopyTestsFolderEvent()
+    {
+        event(new CopyTestsFolderEvent());
+    }
 
     //     private function lunchNpmInstallEvent()
     //     {

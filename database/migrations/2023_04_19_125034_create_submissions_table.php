@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('path')->comment('The path to the file or the url');
             $table->enum('status', ['pending', 'processing', 'completed', 'failed']);
             $table->json('results')->nullable()->comment('The results of the submission');
-            $table->integer('attempts')->default(0)->comment('The number of attempts to process the submission');
+            $table->integer('attempts')->default(1)->comment('The number of attempts to process the submission');
             $table->timestamps();
         });
     }

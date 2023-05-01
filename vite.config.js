@@ -1,6 +1,8 @@
 import { defineConfig } from "vite";
 import laravel from "laravel-vite-plugin";
 
+const host = "validatenodejs.test";
+
 export default defineConfig({
     plugins: [
         laravel({
@@ -8,5 +10,16 @@ export default defineConfig({
             refresh: true,
         }),
     ],
-    watch: false,
+    server: {
+        host,
+        hmr: { host },
+        https: {
+            key: "D:/laragon/etc/ssl/laragon.key",
+            cert: "D:/laragon/etc/ssl/laragon.crt",
+        },
+        watch: {
+            ignored: ["public/storage/**/*", "storage/**/*"],
+            // usePolling: true,
+        },
+    },
 });

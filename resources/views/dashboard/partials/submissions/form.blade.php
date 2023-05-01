@@ -34,18 +34,22 @@
 @section('scripts', 'Submit Project')
 <script type="text/javascript">
     const inputElement = document.querySelector('input[id="folder"]');
+    const github_url = document.querySelector('input[id="github_url"]');
     FilePond.registerPlugin(FilePondPluginFileValidateType);
     const pond = FilePond.create(inputElement);
     pond.disabled = true;
+    github_url.disabled = true;
     const project_id = $('#project_id');
     var url = '/submissions/upload';
     project_id.on('change', function() {
         const project_id = $(this).val();
         if(project_id){
             pond.disabled = false;
+            github_url.disabled = false;
             url = '/submissions/upload/' + project_id;
         }else{
             pond.disabled = true;
+            github_url.disabled = true;
             url = '/submissions/upload';
         }
         FilePond.setOptions({
@@ -61,7 +65,6 @@
             acceptedFileTypes: ['application/x-zip-compressed'],
             fileValidateTypeDetectType: (source, type) =>
                 new Promise((resolve, reject) => {
-                    console.log(source);    
                 resolve(type);
             }),    
         });
