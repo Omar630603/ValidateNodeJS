@@ -79,9 +79,9 @@ class ExecutionStepSeeder extends Seeder
                 'updated_at' => now(),
             ],
             [
-                'name' => 'NPM Run Build',
+                'name' => 'NPM Run Start',
                 'commands' => json_encode([
-                    'npm', 'run', 'build',
+                    'npm', 'run', 'start',
                 ]),
                 'created_at' => now(),
                 'updated_at' => now(),

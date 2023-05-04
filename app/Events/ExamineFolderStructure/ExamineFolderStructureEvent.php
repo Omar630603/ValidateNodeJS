@@ -14,15 +14,15 @@ class ExamineFolderStructureEvent
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public $submissionId;
+    public $submission;
     public $tempDir;
     public $command;
     /**
      * Create a new event instance.
      */
-    public function __construct($submissionId, $tempDir, $command)
+    public function __construct($submission, $tempDir, $command)
     {
-        $this->submissionId = $submissionId;
+        $this->submission = $submission;
         $this->tempDir = $tempDir;
         $this->command = $command;
     }

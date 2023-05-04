@@ -14,16 +14,16 @@ class UnzipZipFilesEvent
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public $submissionId;
+    public $submission;
     public $zipFileDir;
     public $tempDir;
     public $command;
     /**
      * Create a new event instance.
      */
-    public function __construct($submissionId, $zipFileDir, $tempDir, $command)
+    public function __construct($submission, $zipFileDir, $tempDir, $command)
     {
-        $this->submissionId = $submissionId;
+        $this->submission = $submission;
         $this->zipFileDir = $zipFileDir;
         $this->tempDir = $tempDir;
         $this->command = $command;

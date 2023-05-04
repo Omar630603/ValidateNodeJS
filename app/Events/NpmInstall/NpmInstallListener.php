@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Events\ReplacePackageJson;
+namespace App\Events\NpmInstall;
 
-use App\Events\ReplacePackageJson\ReplacePackageJsonEvent;
+use App\Events\NpmInstall\NpmInstallEvent;
 use App\Models\ExecutionStep;
 use App\Models\Submission;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -10,7 +10,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\Process\Process;
 
-class ReplacePackageJsonListener
+class NpmInstallListener
 {
     /**
      * Create the event listener.
@@ -23,35 +23,35 @@ class ReplacePackageJsonListener
     /**
      * Handle the event.
      */
-    public function handle(ReplacePackageJsonEvent $event): void
+    public function handle(NpmInstallEvent $event): void
     {
-        Log::info("Replacing package.json to {$event->tempDir}");
+        Log::info("NPM install in folder {$event->tempDir}");
         $submission = $event->submission;
-        $step = ExecutionStep::where('name', ExecutionStep::$REPLACE_PACKAGE_JSON)->first();
+        $step = ExecutionStep::where('name', ExecutionStep::$NPM_INSTALL)->first();
         $step_name = $step->name;
         $status = Submission::$PROCESSING;
-        $output = "Replacing package.json";
+        $output = "NPM install in folder {$event->tempDir}";
         $submission->updateOneResult($step_name, $status, $output);
         try {
             // processing
-            $process = new Process($event->command);
+            $process = new Process($event->command, $event->tempDir, null, null, null);
             $process->run();
             if ($process->isSuccessful()) {
-                Log::info("Replaced package.json to {$event->tempDir}");
+                Log::info("NPM installed in folder {$event->tempDir}");
                 $status = Submission::$COMPLETED;
-                $output = "Replaced";
+                $output = "NPM installed";
                 $submission->updateOneResult($step_name, $status, $output);
             } else {
-                Log::error("Failed to replace package.json to {$event->tempDir}");
+                Log::error("Failed to NPM install in folder {$event->tempDir}");
                 $status = Submission::$FAILED;
                 $output = $process->getErrorOutput();
                 $submission->updateStatus($status);
                 Process::fromShellCommandline("rm -rf {$event->tempDir}")->run();
                 $submission->updateOneResult($step_name, $status, $output);
+                throw new \Exception($process->getErrorOutput());
             }
         } catch (\Throwable $th) {
-            // failed
-            Log::error("Failed to replace package.json to {$event->tempDir}");
+            Log::error("Failed to NPM install in folder {$event->tempDir}");
             $status = Submission::$FAILED;
             $output = $th->getMessage();
             $submission->updateStatus($status);

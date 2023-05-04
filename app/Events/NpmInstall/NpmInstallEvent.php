@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Events\CopyTestsFolder;
+namespace App\Events\NpmInstall;
 
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
@@ -10,21 +10,19 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class CopyTestsFolderEvent
+class NpmInstallEvent
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public $submission;
-    public $testsDir;
     public $tempDir;
     public $command;
     /**
      * Create a new event instance.
      */
-    public function __construct($submission, $testsDir, $tempDir, $command)
+    public function __construct($submission, $tempDir, $command)
     {
         $this->submission = $submission;
-        $this->testsDir = $testsDir;
         $this->tempDir = $tempDir;
         $this->command = $command;
     }

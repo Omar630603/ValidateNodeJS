@@ -26,7 +26,7 @@ class ExamineFolderStructureListener
     public function handle(ExamineFolderStructureEvent $event): void
     {
         Log::info("Examine folder structure from {$event->tempDir}");
-        $submission = Submission::find($event->submissionId);
+        $submission = $event->submission;
         $step = ExecutionStep::where('name', ExecutionStep::$EXAMINE_FOLDER_STRUCTURE)->first();
         $step_name = $step->name;
         $status = Submission::$PROCESSING;

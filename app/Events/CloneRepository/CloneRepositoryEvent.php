@@ -14,16 +14,16 @@ class CloneRepositoryEvent
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public $submissionId;
+    public $submission;
     public $repoUrl;
     public $tempDir;
     public $command;
     /**
      * Create a new event instance.
      */
-    public function __construct($submissionId, $repoUrl, $tempDir, $command)
+    public function __construct($submission, $repoUrl, $tempDir, $command)
     {
-        $this->submissionId = $submissionId;
+        $this->submission = $submission;
         $this->repoUrl = $repoUrl;
         $this->tempDir = $tempDir;
         $this->command = $command;

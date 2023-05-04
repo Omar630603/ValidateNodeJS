@@ -14,16 +14,16 @@ class AddEnvFileEvent
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public $submissionId;
+    public $submission;
     public $envFile;
     public $tempDir;
     public $command;
     /**
      * Create a new event instance.
      */
-    public function __construct($submissionId, $envFile, $tempDir, $command)
+    public function __construct($submission, $envFile, $tempDir, $command)
     {
-        $this->submissionId = $submissionId;
+        $this->submission = $submission;
         $this->envFile = $envFile;
         $this->tempDir = $tempDir;
         $this->command = $command;

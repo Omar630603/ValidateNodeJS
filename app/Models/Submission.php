@@ -79,7 +79,7 @@ class Submission extends Model implements HasMedia
         return $steps;
     }
 
-    public function initializeResults()
+    public function initializeResults($increaseAttempts = false)
     {
         $results = [];
         $steps = $this->getExecutionSteps();
@@ -87,10 +87,11 @@ class Submission extends Model implements HasMedia
             $results[$step->executionStep->name] = [
                 'stepID' => $step->id,
                 'status' => self::$PENDING,
+                'order'  => $step->order,
                 'output' => '',
             ];
         }
-        $this->attempts = $this->attempts + 1;
+        if ($increaseAttempts) $this->attempts = $this->attempts + 1;
         $this->updateResults($results);
     }
 

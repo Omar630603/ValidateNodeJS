@@ -26,7 +26,7 @@ class CloneRepositoryListener
     public function handle(CloneRepositoryEvent $event): void
     {
         Log::info("Cloning repo {$event->repoUrl} into {$event->tempDir}");
-        $submission = Submission::find($event->submissionId);
+        $submission = $event->submission;
         $step = ExecutionStep::where('name', ExecutionStep::$CLONE_REPOSITORY)->first();
         $step_name = $step->name;
         $status = Submission::$PROCESSING;

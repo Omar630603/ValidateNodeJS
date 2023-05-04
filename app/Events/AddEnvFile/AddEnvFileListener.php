@@ -26,7 +26,7 @@ class AddEnvFileListener
     public function handle(AddEnvFileEvent $event): void
     {
         Log::info("Adding env file {$event->envFile} into {$event->tempDir}");
-        $submission = Submission::find($event->submissionId);
+        $submission = $event->submission;
         $step = ExecutionStep::where('name', ExecutionStep::$ADD_ENV_FILE)->first();
         $step_name = $step->name;
         $status = Submission::$PROCESSING;

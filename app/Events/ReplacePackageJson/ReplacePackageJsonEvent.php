@@ -14,16 +14,16 @@ class ReplacePackageJsonEvent
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public $submissionId;
+    public $submission;
     public $packageJson;
     public $tempDir;
     public $command;
     /**
      * Create a new event instance.
      */
-    public function __construct($submissionId, $packageJson, $tempDir, $command)
+    public function __construct($submission, $packageJson, $tempDir, $command)
     {
-        $this->submissionId = $submissionId;
+        $this->submission = $submission;
         $this->packageJson = $packageJson;
         $this->tempDir = $tempDir;
         $this->command = $command;
