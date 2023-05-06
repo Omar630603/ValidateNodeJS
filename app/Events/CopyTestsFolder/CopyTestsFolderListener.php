@@ -47,6 +47,7 @@ class CopyTestsFolderListener
                 }
             }
             // completed
+            Log::info("Copied tests folder to {$event->tempDir}");
             $this->updateSubmissionStatus($submission, Submission::$COMPLETED, "Copied tests folder");
         } catch (\Throwable $th) {
             Log::error("Failed to copying tests folder to {$event->tempDir}");

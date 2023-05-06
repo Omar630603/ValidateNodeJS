@@ -85,12 +85,37 @@ class Submission extends Model implements HasMedia
         $results = [];
         $steps = $this->getExecutionSteps();
         foreach ($steps as $step) {
-            $results[$step->executionStep->name] = [
-                'stepID' => $step->id,
-                'status' => self::$PENDING,
-                'order'  => $step->order,
-                'output' => '',
-            ];
+            if ($step->executionStep->name == ExecutionStep::$NPM_RUN_TESTS) {
+                $tests = $this->project->projectExecutionSteps->where('execution_step_id', $step->executionStep->id)->first()->variables;
+                $testResults = [];
+                $order = 0;
+                foreach ($tests as $testCommandValue) {
+                    $order = $order + 1;
+                    $command = implode(" ", $step->executionStep->commands);
+                    $key = explode("=", $testCommandValue)[0];
+                    $value = explode("=", $testCommandValue)[1];
+                    $testName = str_replace($key, $value, $command);
+                    $testResults[$testName] = [
+                        'status' => self::$PENDING,
+                        'output' => '',
+                        'order' => $order,
+                    ];
+                }
+                $results[$step->executionStep->name] = [
+                    'stepID' => $step->id,
+                    'status' => self::$PENDING,
+                    'order'  => $step->order,
+                    'output' => '',
+                    'testResults' => $testResults,
+                ];
+            } else {
+                $results[$step->executionStep->name] = [
+                    'stepID' => $step->id,
+                    'status' => self::$PENDING,
+                    'order'  => $step->order,
+                    'output' => '',
+                ];
+            }
         }
         if ($increaseAttempts) $this->attempts = $this->attempts + 1;
         $this->updateResults($results);

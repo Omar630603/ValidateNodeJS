@@ -7,7 +7,23 @@
                 class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-secondary-500 focus:border-secondary-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-secondary-500 dark:focus:border-secondary-500">
                 <option value="">Select Project</option>
                 @foreach ($projects as $project)
-                <option value="{{ $project->id }}">{{ $project->title }}</option>
+                @php
+                $haveBeenSubmitted = false;
+                $submssion = \App\Models\Submission::where('project_id', $project->id)
+                ->where('user_id',Auth::user()->id)->first();
+                if ($submssion) {
+                $haveBeenSubmitted = true;
+                }
+                @endphp
+                @if ($haveBeenSubmitted)
+                <option disabled>
+                    {{ $project->title }} (HAVE BEEN SUBMITTED)
+                </option>
+                @else
+                <option value="{{ $project->id }}">
+                    {{ $project->title }}
+                </option>
+                @endif
                 @endforeach
             </select>
             <x-input-error :messages="$errors->get('project_id')" class="mt-2" />

@@ -191,7 +191,7 @@ class SubmissionController extends Controller
                         'message' => 'Step ' . $step->executionStep->name . ' is ' . $submission->results->{$step->executionStep->name}->status,
                         'status' => $submission->status,
                         'results' => $submission->results,
-                        'next_step' => ($submission->results->{$step->executionStep->name}->status == Submission::$COMPLETED) ? $submission->getNextExecutionStep($request->step_id) : $step,
+                        'next_step' => $submission->getNextExecutionStep($request->step_id),
                         'completion_percentage' => $completion_percentage,
                     ], 200);
                 }
@@ -212,7 +212,8 @@ class SubmissionController extends Controller
         if ($submission and $submission->status === Submission::$FAILED) {
 
             $submission->updateStatus(Submission::$PENDING);
-            $submission->initializeResults($increaseAttempts = true);
+            $current_attempt = $submission->attempts;
+            $submission->initializeResults(true);
             if ($submission->port != null) Process::fromShellCommandline("npx kill-port $submission->port")->run();
             Process::fromShellCommandline('rm -rf ' . $this->getTempDir($submission))->run();
 
@@ -224,7 +225,7 @@ class SubmissionController extends Controller
             $submission_history->path = $submission->path;
             $submission_history->status = $submission->status;
             $submission_history->results = $submission->results;
-            $submission_history->attempts = $submission->attempts - 1;
+            $submission_history->attempts = $current_attempt;
             $submission_history->port = $submission->port;
             $submission->port = null;
             $submission_history->save();

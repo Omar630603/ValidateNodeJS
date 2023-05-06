@@ -6,18 +6,6 @@
         </h2>
     </x-slot>
     @elseif(request()->routeIs('submissions.show'))
-    <script>
-        function closeDiv(element){
-            if (element.hasClass('fa-flip-vertical')) {
-                element.removeClass('fa-flip-vertical');
-                element.parent().children().not('i').not('h1').not('h2').removeClass('hidden');
-            } else {
-                element.addClass('fa-flip-vertical');
-                element.parent().children().not('i').not('h1').not('h2').addClass('hidden');
-            }
-            console.log(element.parent());
-        }
-    </script>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
             {{ __('Submission NO#').$submission->id.__(' of Project: ') . $submission->project->title .__(' attempt NO#: ').$submission->attempts }}
@@ -188,6 +176,7 @@
                             'X-CSRF-TOKEN': '{{ csrf_token() }}'
                         }
                     });
+                    console.log(response);
                     // update the UI with the response
                     updateUI(response);
                     // move the progress bar if the completion percentage has changed
@@ -339,7 +328,7 @@
                     startElement.find('#start_success_icon').removeClass('hidden');
                     submission_results.append('<p class="text-center m-0 p-0">Results Summary</p>'); 
                     submission_results.append(`<div class="text-lg text-white mt-5 border p-5 rounded-md" id="submission_results_start">
-                                <i class="float-right fa-solid fa-arrow-up cursor-pointer" onclick="closeDiv($(this))"></i>
+    
                                 <h1 class="text-md font-bold">${number}- Start</h1>
                                 <h2 class="text-xs font-semibold text-secondary-400">Status: Done</h2>
                                 <p class="text-xs font-semibold">Output: Submission has been initialized and ready to process</p>
@@ -380,8 +369,7 @@
                             testResultsDiv = ``;
                             stepTestNames.each(function( index ) {
                                 testResultsDiv += `
-                                <div class="text-xs mt-5 border p-5 break-words rounded-md">
-                                    <i class="float-right fa-solid fa-arrow-up cursor-pointer" onclick="closeDiv($(this))"></i>
+                                <div class="text-xs mt-5 border p-5 break-words rounded-md" id="submission_results_${stepData.stepID}_${$(this).text()}">
                                     <h1 class="text-xs font-semibold text-gray-400 break-words">${$(this).text()}</h1>
                                     <h2 class="text-xs font-semibold text-gray-400 break-words">Status: Pending</h2>
                                     <p class="text-xs font-semibold text-gray-400 break-words">Output:</p>
@@ -389,7 +377,6 @@
                                 `;
                             });
                             submission_results.append(`<div class="text-lg text-white mt-5 border p-5 rounded-md" id="submission_results_${stepData.stepID}">
-                                <i class="float-right fa-solid fa-arrow-up cursor-pointer" onclick="closeDiv($(this))"></i>
                                 <h1 class="text-md font-bold">${number}- ${stepName}</h1>
                                 <h2 class="text-xs font-semibold ${stausClass}">Status: ${stepData.status}</h2>
                                 <p class="text-xs font-semibold ${outputClass}">Output: ${stepData.output}</p>
@@ -398,7 +385,6 @@
                                 </div>`);
                         }else{
                             submission_results.append(`<div class="text-lg text-white mt-5 border p-5 rounded-md" id="submission_results_${stepData.stepID}">
-                                <i class="float-right fa-solid fa-arrow-up cursor-pointer" onclick="closeDiv($(this))"></i>
                                 <h1 class="text-md font-bold">${number}- ${stepName}</h1>
                                 <h2 class="text-xs font-semibold ${stausClass}">Status: ${stepData.status}</h2>
                                 <p class="text-xs font-semibold ${outputClass}">Output: ${stepData.output}</p>
@@ -407,8 +393,7 @@
                     }
                     // add the last step done
                     submission_results.append(`<div class="text-lg text-white mt-5 border p-5 rounded-md" id="submission_results_done">
-                        <i class="float-right fa-solid fa-arrow-up cursor-pointer" onclick="closeDiv($(this))"></i>
-                        <h1 class="text-md font-bold">${number}- Done</h1>
+                        <h1 class="text-md font-bold">${number+1}- Done</h1>
                         <h2 class="text-xs font-semibold text-gray-400">Status: Pending</h2>
                         <p class="text-xs font-semibold text-gray-400 break-words">Output:</p>
                         </div>`);
