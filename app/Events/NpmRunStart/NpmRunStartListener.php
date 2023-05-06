@@ -74,11 +74,13 @@ class NpmRunStartListener
             // timeout reached, kill the process and update the submission status
             if ($fail) {
                 $process->stop();
+                Log::error("Failed to NPM run start in folder {$tempDir} " . $process->getErrorOutput());
                 $this->updateSubmissionStatus($submission, Submission::$FAILED, "Failed to start application on port $port");
                 Process::fromShellCommandline("npx kill-port $port")->run();
             }
         } catch (\Throwable $e) {
-            $this->updateSubmissionStatus($submission, Submission::$FAILED, $e->getMessage());
+            Log::error("Failed to NPM run start in folder {$tempDir}" . $e->getMessage());
+            $this->updateSubmissionStatus($submission, Submission::$FAILED, "Failed to start application on port $port");
             Process::fromShellCommandline("npx kill-port $port")->run();
         }
     }

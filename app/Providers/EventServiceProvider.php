@@ -18,6 +18,8 @@ use App\Events\NpmInstall\NpmInstallEvent;
 use App\Events\NpmInstall\NpmInstallListener;
 use App\Events\NpmRunStart\NpmRunStartEvent;
 use App\Events\NpmRunStart\NpmRunStartListener;
+use App\Events\DeleteTempDirectory\DeleteTempDirectoryEvent;
+use App\Events\DeleteTempDirectory\DeleteTempDirectoryListener;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
@@ -57,6 +59,9 @@ class EventServiceProvider extends ServiceProvider
         ],
         NpmRunStartEvent::class => [
             NpmRunStartListener::class,
+        ],
+        DeleteTempDirectoryEvent::class => [
+            DeleteTempDirectoryListener::class,
         ],
     ];
 

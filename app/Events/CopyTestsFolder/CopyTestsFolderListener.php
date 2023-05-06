@@ -50,7 +50,7 @@ class CopyTestsFolderListener
             Log::info("Copied tests folder to {$event->tempDir}");
             $this->updateSubmissionStatus($submission, Submission::$COMPLETED, "Copied tests folder");
         } catch (\Throwable $th) {
-            Log::error("Failed to copying tests folder to {$event->tempDir}");
+            Log::error("Failed to copying tests folder to {$event->tempDir} " . $th->getMessage());
             $this->updateSubmissionStatus($submission, Submission::$FAILED, "Failed to copying tests folder");
             Process::fromShellCommandline("rm -rf {$event->tempDir}")->run();
         }

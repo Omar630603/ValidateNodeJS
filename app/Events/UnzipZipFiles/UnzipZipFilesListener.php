@@ -37,7 +37,7 @@ class UnzipZipFilesListener
                 $this->updateSubmissionStatus($submission, Submission::$COMPLETED, "Unzipped submitted folder");
             } else {
                 Log::error("Failed to unzip {$event->zipFileDir} " . $process->getErrorOutput());
-                $this->updateSubmissionStatus($submission, Submission::$FAILED, "Failed tp unzip submitted folder");
+                $this->updateSubmissionStatus($submission, Submission::$FAILED, "Failed to unzip submitted folder");
                 Process::fromShellCommandline("rm -rf {$event->tempDir}")->run();
             }
         } catch (\Throwable $th) {

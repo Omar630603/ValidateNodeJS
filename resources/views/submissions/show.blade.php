@@ -176,7 +176,6 @@
                             'X-CSRF-TOKEN': '{{ csrf_token() }}'
                         }
                     });
-                    console.log(response);
                     // update the UI with the response
                     updateUI(response);
                     // move the progress bar if the completion percentage has changed
@@ -190,10 +189,10 @@
                         if (response.next_step?.id !== undefined) {
                             // the submission is still processing
                             // wait 1 second and check again
+                            loaderElement.removeClass('hidden');
                             setTimeout(() => {
-                                loaderElement.removeClass('hidden');
                                 window.requestAnimationFrame(checkSubmissionProgress);
-                            }, 1000);
+                            }, 2000);
                         } else {
                             // the end of the submission steps
                             loaderElement.addClass('hidden');
@@ -236,7 +235,7 @@
                 // show the refresh button
                 refreshElement.removeClass('hidden');
                 if (allowedToRefresh){
-                    refreshElement.click(async function(){
+                    refreshElement.click(function(){
                         // prevent the user from clicking the button multiple times
                         allowedToRefresh = false;
                         // update the submission results and progress bar
@@ -244,7 +243,7 @@
                         submission_message.text("Submssion Message: Restarting");
                         submission_message.text("Submssion Message: Restarting...");
                         // request the server to refresh the submission
-                        await requestRefresh();
+                        requestRefresh();
                     });
                 }
                 // update the submission results last element
@@ -260,6 +259,7 @@
             async function requestRefresh() {
                 // start the refresh loader
                 refreshElement.addClass('animate-spin');
+                refreshElement.removeClass('cursor-pointer');
                 try {
                     const response = await $.ajax({
                         url: '/submissions/refresh/submission/{{ $submission->id }}',
@@ -269,12 +269,14 @@
                         }
                     });
                     // update the UI with the response
-                    refreshElement.removeClass('animate-spin');
-                    refreshElement.addClass('hidden');
-                    barElement.removeClass('bg-red-400');
-                    barElement.addClass('bg-secondary');
-                    // refresh the page
-                    window.location.reload();
+                    // refresh the page after 5 seconds
+                    setTimeout(() => {
+                        refreshElement.removeClass('animate-spin');
+                        refreshElement.addClass('hidden');
+                        barElement.removeClass('bg-red-400');
+                        barElement.addClass('bg-secondary');
+                        window.location.reload();
+                    }, 5000);
                 } catch (error) {
                     console.log(error);
                     const error_response = {

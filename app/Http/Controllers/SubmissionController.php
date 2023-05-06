@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Events\AddEnvFile\AddEnvFileEvent;
 use App\Events\CloneRepository\CloneRepositoryEvent;
 use App\Events\CopyTestsFolder\CopyTestsFolderEvent;
+use App\Events\DeleteTempDirectory\DeleteTempDirectoryEvent;
 use App\Events\ExamineFolderStructure\ExamineFolderStructureEvent;
 use App\Events\NpmInstall\NpmInstallEvent;
 use App\Events\NpmRunStart\NpmRunStartEvent;
@@ -150,50 +151,51 @@ class SubmissionController extends Controller
                     if ($submission->results->{$step->executionStep->name}->status == Submission::$PENDING) {
                         if ($step->executionStep->name === ExecutionStep::$CLONE_REPOSITORY) {
                             $repoUrl = $submission->path;
-                            $tempDir = $this->getTempDir($submission);
-                            $this->lunchCloneRepositoryEvent($submission, $repoUrl, $tempDir, $step);
+                            $this->lunchCloneRepositoryEvent($submission, $repoUrl, $this->getTempDir($submission), $step);
                         } else if ($step->executionStep->name === ExecutionStep::$UNZIP_ZIP_FILES) {
                             $zipFileDir = $submission->getMedia('submissions')->first()->getPath();
-                            $tempDir = $this->getTempDir($submission);
-                            $this->lunchUnzipZipFilesEvent($submission, $zipFileDir, $tempDir, $step);
+                            $this->lunchUnzipZipFilesEvent($submission, $zipFileDir, $this->getTempDir($submission), $step);
                         } else if ($step->executionStep->name === ExecutionStep::$EXAMINE_FOLDER_STRUCTURE) {
-                            $tempDir = $this->getTempDir($submission);
-                            $this->lunchExamineFolderStructureEvent($submission, $tempDir, $step);
+                            $this->lunchExamineFolderStructureEvent($submission, $this->getTempDir($submission), $step);
                         } else if ($step->executionStep->name === ExecutionStep::$ADD_ENV_FILE) {
-                            $tempDir = $this->getTempDir($submission);
                             $envFile = $submission->project->getMedia('project_files')->where('file_name', '.env')->first()->getPath();
-                            $this->lunchAddEnvFileEvent($submission, $envFile, $tempDir, $step);
+                            $this->lunchAddEnvFileEvent($submission, $envFile, $this->getTempDir($submission), $step);
                         } else if ($step->executionStep->name === ExecutionStep::$REPLACE_PACKAGE_JSON) {
-                            $tempDir = $this->getTempDir($submission);
                             $packageJson = $submission->project->getMedia('project_files')->where('file_name', 'package.json')->first()->getPath();
-                            $this->lunchReplacePackageJsonEvent($submission, $packageJson, $tempDir, $step);
+                            $this->lunchReplacePackageJsonEvent($submission, $packageJson, $this->getTempDir($submission), $step);
                         } else if ($step->executionStep->name === ExecutionStep::$COPY_TESTS_FOLDER) {
-                            $tempDir = $this->getTempDir($submission);
                             $testsDir = [
                                 'testsDirApi' => $submission->project->getMedia('project_tests_api'),
                                 'testsDirWeb' => $submission->project->getMedia('project_tests_web'),
                                 'testsDirImage' => $submission->project->getMedia('project_tests_images'),
                             ];
-                            $this->lunchCopyTestsFolderEvent($submission, $testsDir, $tempDir, $step);
+                            $this->lunchCopyTestsFolderEvent($submission, $testsDir, $this->getTempDir($submission), $step);
                         } else if ($step->executionStep->name === ExecutionStep::$NPM_INSTALL) {
-                            $tempDir = $this->getTempDir($submission);
-                            $this->lunchNpmInstallEvent($submission, $tempDir, $step);
+                            $this->lunchNpmInstallEvent($submission, $this->getTempDir($submission), $step);
                         } else if ($step->executionStep->name === ExecutionStep::$NPM_RUN_START) {
-                            $tempDir = $this->getTempDir($submission);
-                            $this->lunchNpmRunBuildEvent($submission, $tempDir, $step);
+                            $this->lunchNpmRunStartEvent($submission, $this->getTempDir($submission), $step);
                         }
                         // else if ($step->executionStep->name === ExecutionStep::$NPM_RUN_TESTS) {
-                        //     $this->lunchNpmRunTestsEvent();
-                        // } else if ($step->executionStep->name === ExecutionStep::$DELETE_TEMP_DIRECTORY) {
-                        //     $this->lunchDeleteTempDirectoryEvent();
+                        //     $this->lunchNpmRunTestsEvent();}
+                        else if ($step->executionStep->name === ExecutionStep::$DELETE_TEMP_DIRECTORY) {
+                            $this->lunchDeleteTempDirectoryEvent($submission, $this->getTempDir($submission), $step);
+                        }
+                        return response()->json([
+                            'message' => 'Step ' . $step->executionStep->name . ' is ' . $submission->results->{$step->executionStep->name}->status,
+                            'status' => $submission->status,
+                            'results' => $submission->results,
+                            'next_step' => $submission->getNextExecutionStep($request->step_id),
+                            'completion_percentage' => $completion_percentage,
+                        ], 200);
+                    } else {
+                        return response()->json([
+                            'message' => 'Step ' . $step->executionStep->name . ' is ' . $submission->results->{$step->executionStep->name}->status,
+                            'status' => $submission->status,
+                            'results' => $submission->results,
+                            'next_step' => $submission->getNextExecutionStep($request->step_id),
+                            'completion_percentage' => $completion_percentage,
+                        ], 200);
                     }
-                    return response()->json([
-                        'message' => 'Step ' . $step->executionStep->name . ' is ' . $submission->results->{$step->executionStep->name}->status,
-                        'status' => $submission->status,
-                        'results' => $submission->results,
-                        'next_step' => $submission->getNextExecutionStep($request->step_id),
-                        'completion_percentage' => $completion_percentage,
-                    ], 200);
                 }
                 return response()->json([
                     'message' => 'Submission is processing meanwhile there is no step to execute',
@@ -204,33 +206,46 @@ class SubmissionController extends Controller
                 ], 200);
             }
         }
+        return response()->json([
+            'message' => 'Submission not found',
+        ], 404);
     }
 
     public function refresh(Request $request, $submission_id)
     {
         $submission = Submission::find($submission_id);
         if ($submission and $submission->status === Submission::$FAILED) {
-
+            $commands = [];
+            if ($submission->port != null) {
+                $commands = [
+                    ['npx', 'kill-port', $submission->port],
+                    ['rm', '-rf', $this->getTempDir($submission)],
+                ];
+            } else {
+                $commands = [
+                    ['rm', '-rf', $this->getTempDir($submission)],
+                ];
+            }
+            // Delete temp directory
+            $this->lunchDeleteTempDirectoryEvent($submission, $this->getTempDir($submission), null, $commands);
+            // Update submission status
             $submission->updateStatus(Submission::$PENDING);
             $current_attempt = $submission->attempts;
             $submission->initializeResults(true);
-            if ($submission->port != null) Process::fromShellCommandline("npx kill-port $submission->port")->run();
-            Process::fromShellCommandline('rm -rf ' . $this->getTempDir($submission))->run();
-
-            $submission_history  = new SubmissionHistory();
-            $submission_history->submission_id = $submission->id;
-            $submission_history->user_id = $submission->user_id;
-            $submission_history->project_id = $submission->project_id;
-            $submission_history->type = $submission->type;
-            $submission_history->path = $submission->path;
-            $submission_history->status = $submission->status;
-            $submission_history->results = $submission->results;
-            $submission_history->attempts = $current_attempt;
-            $submission_history->port = $submission->port;
-            $submission->port = null;
+            // Create submission history
+            $submission_history                 = new SubmissionHistory();
+            $submission_history->submission_id  = $submission->id;
+            $submission_history->user_id        = $submission->user_id;
+            $submission_history->project_id     = $submission->project_id;
+            $submission_history->type           = $submission->type;
+            $submission_history->path           = $submission->path;
+            $submission_history->status         = $submission->status;
+            $submission_history->results        = $submission->results;
+            $submission_history->attempts       = $current_attempt;
+            $submission_history->port           = $submission->port;
             $submission_history->save();
-            $submission->save();
-
+            $submission->updatePort(null);
+            // Return response
             return response()->json([
                 'message' => 'Submission has been refreshed',
                 'status' => $submission->status,
@@ -341,7 +356,7 @@ class SubmissionController extends Controller
         event(new NpmInstallEvent($submission, $tempDir, $commands));
     }
 
-    private function lunchNpmRunBuildEvent($submission, $tempDir, $step)
+    private function lunchNpmRunStartEvent($submission, $tempDir, $step)
     {
         $commands = $step->executionStep->commands;
         event(new NpmRunStartEvent($submission, $tempDir, $commands));
@@ -352,8 +367,9 @@ class SubmissionController extends Controller
     //         event(new NpmRunTestsEvent());
     //     }
 
-    //     private function lunchDeleteTempDirectoryEvent()
-    //     {
-    //         event(new DeleteTempDirectoryEvent());
-    //     }
+    private function lunchDeleteTempDirectoryEvent($submission, $tempDir, $step, $commands = null)
+    {
+        if ($commands == null) $commands = [$step->executionStep->commands];
+        event(new DeleteTempDirectoryEvent($submission, $tempDir, $commands));
+    }
 }

@@ -30,6 +30,11 @@ class NpmInstallListener
         $this->updateSubmissionStatus($submission, Submission::$PROCESSING, "NPM installing");
         try {
             // processing
+            $node_modulesFolderPath = public_path() . '/' . 'assets/projects/' . $submission->project->title . '/node_modules'; // specify the folder name to check
+            if (is_dir($node_modulesFolderPath)) {
+                Process::fromShellCommandline('cp -r ' . $node_modulesFolderPath . ' ' . $event->tempDir, null, null, null, null)->run();
+            }
+
             $process = new Process($event->command, $event->tempDir, null, null, null);
             $process->run();
             if ($process->isSuccessful()) {
