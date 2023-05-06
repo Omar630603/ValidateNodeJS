@@ -25,38 +25,33 @@ class UnzipZipFilesListener
      */
     public function handle(UnzipZipFilesEvent $event): void
     {
-        Log::info("Unzipping {$event->zipFileDir} into {$event->tempDir}");
         $submission = $event->submission;
-        $step = ExecutionStep::where('name', ExecutionStep::$UNZIP_ZIP_FILES)->first();
-        $step_name = $step->name;
-        $status = Submission::$PROCESSING;
-        $output = "Unzipping {$event->zipFileDir}";
-        $submission->updateOneResult($step_name, $status, $output);
+        Log::info("Unzipping {$event->zipFileDir} into {$event->tempDir}");
+        $this->updateSubmissionStatus($submission, Submission::$PROCESSING, "Unzipping submitted folder");
         try {
             // processing
             $process = new Process($event->command);
             $process->run();
             if ($process->isSuccessful()) {
                 Log::info("Unzipped {$event->zipFileDir} into {$event->tempDir}");
-                $status = Submission::$COMPLETED;
-                $output = "Unzipped";
-                $submission->updateOneResult($step_name, $status, $output);
+                $this->updateSubmissionStatus($submission, Submission::$COMPLETED, "Unzipped submitted folder");
             } else {
-                Log::error("Failed to unzip {$event->zipFileDir}");
-                $status = Submission::$FAILED;
-                $output = $process->getErrorOutput();
-                $submission->updateStatus($status);
+                Log::error("Failed to unzip {$event->zipFileDir} " . $process->getErrorOutput());
+                $this->updateSubmissionStatus($submission, Submission::$FAILED, "Failed tp unzip submitted folder");
                 Process::fromShellCommandline("rm -rf {$event->tempDir}")->run();
-                $submission->updateOneResult($step_name, $status, $output);
             }
         } catch (\Throwable $th) {
             // failed
-            Log::error("Failed to unzip {$event->zipFileDir}");
-            $status = Submission::$FAILED;
-            $output = $th->getMessage();
-            $submission->updateStatus($status);
+            Log::error("Failed to unzip {$event->zipFileDir} " . $th->getMessage());
+            $this->updateSubmissionStatus($submission, Submission::$FAILED, "Failed tp unzip submitted folder");
             Process::fromShellCommandline("rm -rf {$event->tempDir}")->run();
-            $submission->updateOneResult($step_name, $status, $output);
         }
+    }
+
+    private function updateSubmissionStatus(Submission $submission, string $status, string $output): void
+    {
+        $stepName = ExecutionStep::$UNZIP_ZIP_FILES;
+        $submission->updateOneResult($stepName, $status, $output);
+        if ($status != Submission::$COMPLETED) $submission->updateStatus($status);
     }
 }

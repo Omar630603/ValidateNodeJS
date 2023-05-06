@@ -25,13 +25,9 @@ class CloneRepositoryListener
      */
     public function handle(CloneRepositoryEvent $event): void
     {
-        Log::info("Cloning repo {$event->repoUrl} into {$event->tempDir}");
         $submission = $event->submission;
-        $step = ExecutionStep::where('name', ExecutionStep::$CLONE_REPOSITORY)->first();
-        $step_name = $step->name;
-        $status = Submission::$PROCESSING;
-        $output = "Cloning repo {$event->repoUrl}";
-        $submission->updateOneResult($step_name, $status, $output);
+        Log::info("Cloning repo {$event->repoUrl} into {$event->tempDir}");
+        $this->updateSubmissionStatus($submission, Submission::$PROCESSING, "Cloning repo {$event->repoUrl}");
         try {
             // processing
             $process = new Process($event->command);
@@ -39,29 +35,25 @@ class CloneRepositoryListener
             if ($process->isSuccessful()) {
                 // completed
                 Log::info("Cloned repo {$event->repoUrl} into {$event->tempDir}");
-                $status = Submission::$COMPLETED;
-                $output = $process->getOutput();
-                if (empty($output)) {
-                    $output = "Cloned repo {$event->repoUrl}";
-                }
-                $submission->updateOneResult($step_name, $status, $output);
+                $this->updateSubmissionStatus($submission, Submission::$COMPLETED, "Cloned repo {$event->repoUrl}");
             } else {
                 // failed
-                Log::error("Failed to clone repo {$event->repoUrl}");
-                $status = Submission::$FAILED;
-                $output = $process->getErrorOutput();
-                $submission->updateStatus($status);
+                Log::error("Failed to clone repo {$event->repoUrl} " . $process->getErrorOutput());
+                $this->updateSubmissionStatus($submission, Submission::$FAILED, "Failed to clone repo {$event->repoUrl}");
                 Process::fromShellCommandline("rm -rf {$event->tempDir}")->run();
-                $submission->updateOneResult($step_name, $status, $output);
             }
         } catch (\Throwable $th) {
             // failed
-            Log::error("Failed to clone repo {$event->repoUrl}");
-            $status = Submission::$FAILED;
-            $output = $th->getMessage();
-            $submission->updateStatus($status);
+            Log::error("Failed to clone repo {$event->repoUrl} " . $th->getMessage());
+            $this->updateSubmissionStatus($submission, Submission::$FAILED, "Failed to clone repo {$event->repoUrl}");
             Process::fromShellCommandline("rm -rf {$event->tempDir}")->run();
-            $submission->updateOneResult($step_name, $status, $output);
         }
+    }
+
+    private function updateSubmissionStatus(Submission $submission, string $status, string $output): void
+    {
+        $stepName = ExecutionStep::$CLONE_REPOSITORY;
+        $submission->updateOneResult($stepName, $status, $output);
+        if ($status != Submission::$COMPLETED) $submission->updateStatus($status);
     }
 }

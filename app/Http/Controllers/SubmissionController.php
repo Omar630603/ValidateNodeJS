@@ -12,8 +12,8 @@ use App\Events\ReplacePackageJson\ReplacePackageJsonEvent;
 use App\Events\UnzipZipFiles\UnzipZipFilesEvent;
 use App\Models\ExecutionStep;
 use App\Models\Project;
-use App\Models\ProjectExecutionStep;
 use App\Models\Submission;
+use App\Models\SubmissionHistory;
 use App\Models\TemporaryFile;
 use Illuminate\Http\Request;
 use Symfony\Component\Process\Process;
@@ -209,11 +209,27 @@ class SubmissionController extends Controller
     public function refresh(Request $request, $submission_id)
     {
         $submission = Submission::find($submission_id);
-        if ($submission) {
+        if ($submission and $submission->status === Submission::$FAILED) {
+
             $submission->updateStatus(Submission::$PENDING);
             $submission->initializeResults($increaseAttempts = true);
+            if ($submission->port != null) Process::fromShellCommandline("npx kill-port $submission->port")->run();
             Process::fromShellCommandline('rm -rf ' . $this->getTempDir($submission))->run();
-            // To Do: Create submission history
+
+            $submission_history  = new SubmissionHistory();
+            $submission_history->submission_id = $submission->id;
+            $submission_history->user_id = $submission->user_id;
+            $submission_history->project_id = $submission->project_id;
+            $submission_history->type = $submission->type;
+            $submission_history->path = $submission->path;
+            $submission_history->status = $submission->status;
+            $submission_history->results = $submission->results;
+            $submission_history->attempts = $submission->attempts - 1;
+            $submission_history->port = $submission->port;
+            $submission->port = null;
+            $submission_history->save();
+            $submission->save();
+
             return response()->json([
                 'message' => 'Submission has been refreshed',
                 'status' => $submission->status,

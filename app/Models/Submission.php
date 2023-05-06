@@ -27,6 +27,7 @@ class Submission extends Model implements HasMedia
         'status',
         'results',
         'attempts',
+        'port'
     ];
 
     protected $casts = [
@@ -112,6 +113,12 @@ class Submission extends Model implements HasMedia
     public function updateResults($results)
     {
         $this->results = $results;
+        $this->save();
+    }
+
+    public function updatePort($port)
+    {
+        $this->port = $port;
         $this->save();
     }
 

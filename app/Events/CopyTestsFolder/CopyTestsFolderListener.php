@@ -25,14 +25,9 @@ class CopyTestsFolderListener
      */
     public function handle(CopyTestsFolderEvent $event): void
     {
-        Log::info("Copying tests folder to {$event->tempDir}");
         $submission = $event->submission;
-        $step = ExecutionStep::where('name', ExecutionStep::$COPY_TESTS_FOLDER)->first();
-        $step_name = $step->name;
-        $status = Submission::$PROCESSING;
-        $output = "Copying tests folder to {$event->tempDir}";
-        $submission->updateOneResult($step_name, $status, $output);
-
+        Log::info("Copying tests folder to {$event->tempDir}");
+        $this->updateSubmissionStatus($submission, Submission::$PROCESSING, "Copying tests folder");
         try {
             // processing
             mkdir($event->tempDir . '/tests', 0777, true);
@@ -46,25 +41,24 @@ class CopyTestsFolderListener
                     Log::info("Copied tests {$value[2]} folder to {$value[3]}");
                 } else {
                     Log::error("Failed to copying tests {$value[2]} folder to {$value[3]}");
-                    $status = Submission::$FAILED;
-                    $output = $process->getErrorOutput();
-                    $submission->updateStatus($status);
+                    $this->updateSubmissionStatus($submission, Submission::$FAILED, "Failed to copying tests folder");
                     Process::fromShellCommandline("rm -rf {$event->tempDir}")->run();
-                    $submission->updateOneResult($step_name, $status, $output);
                     throw new \Exception($process->getErrorOutput());
                 }
             }
             // completed
-            $status = Submission::$COMPLETED;
-            $output = "Copied";
-            $submission->updateOneResult($step_name, $status, $output);
+            $this->updateSubmissionStatus($submission, Submission::$COMPLETED, "Copied tests folder");
         } catch (\Throwable $th) {
             Log::error("Failed to copying tests folder to {$event->tempDir}");
-            $status = Submission::$FAILED;
-            $output = $th->getMessage();
-            $submission->updateStatus($status);
+            $this->updateSubmissionStatus($submission, Submission::$FAILED, "Failed to copying tests folder");
             Process::fromShellCommandline("rm -rf {$event->tempDir}")->run();
-            $submission->updateOneResult($step_name, $status, $output);
         }
+    }
+
+    private function updateSubmissionStatus(Submission $submission, string $status, string $output): void
+    {
+        $stepName = ExecutionStep::$COPY_TESTS_FOLDER;
+        $submission->updateOneResult($stepName, $status, $output);
+        if ($status != Submission::$COMPLETED) $submission->updateStatus($status);
     }
 }

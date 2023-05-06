@@ -25,38 +25,32 @@ class AddEnvFileListener
      */
     public function handle(AddEnvFileEvent $event): void
     {
-        Log::info("Adding env file {$event->envFile} into {$event->tempDir}");
         $submission = $event->submission;
-        $step = ExecutionStep::where('name', ExecutionStep::$ADD_ENV_FILE)->first();
-        $step_name = $step->name;
-        $status = Submission::$PROCESSING;
-        $output = "Adding env file {$event->envFile}";
-        $submission->updateOneResult($step_name, $status, $output);
+        Log::info("Adding env file {$event->envFile} into {$event->tempDir}");
+        $this->updateSubmissionStatus($submission, Submission::$PROCESSING, "Adding env file");
         try {
             // processing
             $process = new Process($event->command);
             $process->run();
             if ($process->isSuccessful()) {
                 Log::info("Added env file {$event->envFile} into {$event->tempDir}");
-                $status = Submission::$COMPLETED;
-                $output = "Added env file";
-                $submission->updateOneResult($step_name, $status, $output);
+                $this->updateSubmissionStatus($submission, Submission::$COMPLETED, "Added env file");
             } else {
-                Log::error("Failed to add env file {$event->envFile}");
-                $status = Submission::$FAILED;
-                $output = $process->getErrorOutput();
-                $submission->updateStatus($status);
+                Log::error("Failed to add env file {$event->envFile} " . $process->getErrorOutput());
+                $this->updateSubmissionStatus($submission, Submission::$FAILED, "Failed to add env file");
                 Process::fromShellCommandline("rm -rf {$event->tempDir}")->run();
-                $submission->updateOneResult($step_name, $status, $output);
             }
         } catch (\Throwable $th) {
             // failed
-            Log::error("Failed to add env file {$event->envFile}");
-            $status = Submission::$FAILED;
-            $output = $th->getMessage();
-            $submission->updateStatus($status);
-            Process::fromShellCommandline("rm -rf {$event->tempDir}")->run();
-            $submission->updateOneResult($step_name, $status, $output);
+            Log::error("Failed to add env file {$event->envFile} " . $th->getMessage());
+            $this->updateSubmissionStatus($submission, Submission::$FAILED, "Failed to add env file");
         }
+    }
+
+    private function updateSubmissionStatus(Submission $submission, string $status, string $output): void
+    {
+        $stepName = ExecutionStep::$ADD_ENV_FILE;
+        $submission->updateOneResult($stepName, $status, $output);
+        if ($status != Submission::$COMPLETED) $submission->updateStatus($status);
     }
 }

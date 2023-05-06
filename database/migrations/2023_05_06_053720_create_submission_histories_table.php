@@ -11,15 +11,16 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('submissions', function (Blueprint $table) {
+        Schema::create('submission_histories', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('submission_id')->constrained()->cascadeOnDelete();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->foreignId('project_id')->constrained()->cascadeOnDelete();
             $table->enum('type', ['file', 'url']);
             $table->string('path')->comment('The path to the file or the url');
             $table->enum('status', ['pending', 'processing', 'completed', 'failed']);
             $table->json('results')->nullable()->comment('The results of the submission');
-            $table->integer('attempts')->default(1)->comment('The number of attempts to process the submission');
+            $table->integer('attempts');
             $table->integer('port')->nullable()->comment('The port number of the submission');
             $table->timestamps();
         });
@@ -30,6 +31,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('submissions');
+        Schema::dropIfExists('submission_histories');
     }
 };

@@ -34,7 +34,7 @@ class NpmRunStartListener
 
 
         Log::info("NPM run start is processing in folder {$event->tempDir}");
-        $this->updateSubmissionStatus($submission, Submission::$PROCESSING, "Npm run start is processing");
+        $this->updateSubmissionStatus($submission, Submission::$PROCESSING, "NPM run start is processing");
         // Change port number in .env file
         $port = $this->getAvailablePort();
         if (!$port) {
@@ -49,12 +49,13 @@ class NpmRunStartListener
             file_put_contents($envPath, $envContent);
         }
 
-        // Run npm start command
+        // Run NPM start command
         $output = "";
         try {
+            // processing
             $process = new Process($command, $tempDir, null, null, null);
             $process->start();
-            $this->updateSubmissionStatus($submission, Submission::$PROCESSING, "Starting application on port $port");
+
             $fail = true;
             $timeout = 30; // in seconds
             $startTime = time();
@@ -64,6 +65,7 @@ class NpmRunStartListener
                     log::info("NPM run start is completed in folder {$tempDir} the application is running on port $port");
                     $this->updateSubmissionStatus($submission, Submission::$COMPLETED, $output);
                     $fail = false;
+                    $submission->updatePort($port);
                     $process->wait();
                     break;
                 }

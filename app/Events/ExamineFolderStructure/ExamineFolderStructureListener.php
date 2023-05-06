@@ -25,13 +25,9 @@ class ExamineFolderStructureListener
      */
     public function handle(ExamineFolderStructureEvent $event): void
     {
-        Log::info("Examine folder structure from {$event->tempDir}");
         $submission = $event->submission;
-        $step = ExecutionStep::where('name', ExecutionStep::$EXAMINE_FOLDER_STRUCTURE)->first();
-        $step_name = $step->name;
-        $status = Submission::$PROCESSING;
-        $output = "Examine folder structure from {$event->tempDir}";
-        $submission->updateOneResult($step_name, $status, $output);
+        Log::info("Examining folder structure from {$event->tempDir}");
+        $this->updateSubmissionStatus($submission, Submission::$PROCESSING, "Examining folder structure");
         try {
             // processing
             $process = new Process($event->command);
@@ -57,32 +53,21 @@ class ExamineFolderStructureListener
 
                 Log::info("Finished examining folder structure from {$event->tempDir}");
                 if (empty($missingFiles)) {
-                    $status = Submission::$COMPLETED;
-                    $output = "Finished examining folder structure from successfully";
-                    $submission->updateOneResult($step_name, $status, $output);
+                    $this->updateSubmissionStatus($submission, Submission::$COMPLETED, "Finished examining folder structure from successfully");
                 } else {
-                    Log::error("Failed to examine folder structure from {$event->tempDir}");
-                    $status = Submission::$FAILED;
-                    $output = "Submitted project is missing the following files " . json_encode($missingFiles);
-                    $submission->updateStatus($status);
+                    Log::error("Failed to examine folder structure from {$event->tempDir} " . json_encode($missingFiles) . " are missing");
+                    $this->updateSubmissionStatus($submission, Submission::$FAILED, "Submitted project is missing the following files " . json_encode($missingFiles));
                     Process::fromShellCommandline("rm -rf {$event->tempDir}")->run();
-                    $submission->updateOneResult($step_name, $status, $output);
                 }
             } else {
-                Log::error("Failed to examine folder structure from {$event->tempDir}");
-                $status = Submission::$FAILED;
-                $output = $process->getErrorOutput();
-                $submission->updateStatus($status);
+                Log::error("Failed to examine folder structure from {$event->tempDir} " . $process->getErrorOutput());
+                $this->updateSubmissionStatus($submission, Submission::$FAILED, "Failed to examine folder structure");
                 Process::fromShellCommandline("rm -rf {$event->tempDir}")->run();
-                $submission->updateOneResult($step_name, $status, $output);
             }
         } catch (\Throwable $th) {
-            Log::error("Failed to examine folder structure from {$event->tempDir}");
-            $status = Submission::$FAILED;
-            $output = $th->getMessage();
-            $submission->updateStatus($status);
+            Log::error("Failed to examine folder structure from {$event->tempDir}" . $th->getMessage());
+            $this->updateSubmissionStatus($submission, Submission::$FAILED, "Failed to examine folder structure");
             Process::fromShellCommandline("rm -rf {$event->tempDir}")->run();
-            $submission->updateOneResult($step_name, $status, $output);
         }
     }
 
@@ -124,5 +109,12 @@ class ExamineFolderStructureListener
             }
         }
         return $diff;
+    }
+
+    private function updateSubmissionStatus(Submission $submission, string $status, string $output): void
+    {
+        $stepName = ExecutionStep::$EXAMINE_FOLDER_STRUCTURE;
+        $submission->updateOneResult($stepName, $status, $output);
+        if ($status != Submission::$COMPLETED) $submission->updateStatus($status);
     }
 }

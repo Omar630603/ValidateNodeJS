@@ -25,38 +25,35 @@ class ReplacePackageJsonListener
      */
     public function handle(ReplacePackageJsonEvent $event): void
     {
-        Log::info("Replacing package.json to {$event->tempDir}");
         $submission = $event->submission;
-        $step = ExecutionStep::where('name', ExecutionStep::$REPLACE_PACKAGE_JSON)->first();
-        $step_name = $step->name;
-        $status = Submission::$PROCESSING;
-        $output = "Replacing package.json";
-        $submission->updateOneResult($step_name, $status, $output);
+        Log::info("Replacing package.json to {$event->tempDir}");
+        $this->updateSubmissionStatus($submission, Submission::$PROCESSING, "Replacing package.json");
         try {
             // processing
             $process = new Process($event->command);
             $process->run();
             if ($process->isSuccessful()) {
+                // completed
                 Log::info("Replaced package.json to {$event->tempDir}");
-                $status = Submission::$COMPLETED;
-                $output = "Replaced";
-                $submission->updateOneResult($step_name, $status, $output);
+                $this->updateSubmissionStatus($submission, Submission::$COMPLETED, "Replaced package.json");
             } else {
-                Log::error("Failed to replace package.json to {$event->tempDir}");
-                $status = Submission::$FAILED;
-                $output = $process->getErrorOutput();
-                $submission->updateStatus($status);
+                // failed
+                Log::error("Failed to replace package.json to {$event->tempDir} " . $process->getErrorOutput());
+                $this->updateSubmissionStatus($submission, Submission::$FAILED, "Failed to replace package.json");
                 Process::fromShellCommandline("rm -rf {$event->tempDir}")->run();
-                $submission->updateOneResult($step_name, $status, $output);
             }
         } catch (\Throwable $th) {
             // failed
-            Log::error("Failed to replace package.json to {$event->tempDir}");
-            $status = Submission::$FAILED;
-            $output = $th->getMessage();
-            $submission->updateStatus($status);
+            Log::error("Failed to replace package.json to {$event->tempDir} " . $th->getMessage());
+            $this->updateSubmissionStatus($submission, Submission::$FAILED, "Failed to replace package.json");
             Process::fromShellCommandline("rm -rf {$event->tempDir}")->run();
-            $submission->updateOneResult($step_name, $status, $output);
         }
+    }
+
+    private function updateSubmissionStatus(Submission $submission, string $status, string $output): void
+    {
+        $stepName = ExecutionStep::$REPLACE_PACKAGE_JSON;
+        $submission->updateOneResult($stepName, $status, $output);
+        if ($status != Submission::$COMPLETED) $submission->updateStatus($status);
     }
 }
