@@ -18,16 +18,16 @@ class ProjectExecutionStepSeeder extends Seeder
         $api_experiment_project_id = Project::where('title', 'api-experiment')->first()->id;
         $auth_experiment_project_id = Project::where('title', 'auth-experiment')->first()->id;
 
-        $clone_repo_execution_step_id = ExecutionStep::where('name', 'Clone Repository')->first()->id;
-        $unzip_zip_files_execution_step_id = ExecutionStep::where('name', 'Unzip ZIP Files')->first()->id;
-        $checking_folder_structure_execution_step_id = ExecutionStep::where('name', 'Examine Folder Structure')->first()->id;
-        $add_env_file_execution_step_id = ExecutionStep::where('name', 'Add .env File')->first()->id;
-        $replace_package_json_execution_step_id = ExecutionStep::where('name', 'Replace package.json')->first()->id;
-        $copy_tests_folder_step_id = ExecutionStep::where('name', "Copy 'tests' Folder")->first()->id;
-        $npm_install_execution_step_id = ExecutionStep::where('name', 'NPM Install')->first()->id;
-        $npm_run_build_execution_step_id = ExecutionStep::where('name', 'NPM Run Build')->first()->id;
-        $npm_run_tests_execution_step_id = ExecutionStep::where('name', 'NPM Run Tests')->first()->id;
-        $delete_temp_directory_execution_step_id = ExecutionStep::where('name', 'Delete Temp Directory')->first()->id;
+        $clone_repo_execution_step_id = ExecutionStep::where('name', ExecutionStep::$CLONE_REPOSITORY)->first()->id;
+        $unzip_zip_files_execution_step_id = ExecutionStep::where('name', ExecutionStep::$UNZIP_ZIP_FILES)->first()->id;
+        $checking_folder_structure_execution_step_id = ExecutionStep::where('name', ExecutionStep::$EXAMINE_FOLDER_STRUCTURE)->first()->id;
+        $add_env_file_execution_step_id = ExecutionStep::where('name', ExecutionStep::$ADD_ENV_FILE)->first()->id;
+        $replace_package_json_execution_step_id = ExecutionStep::where('name', ExecutionStep::$REPLACE_PACKAGE_JSON)->first()->id;
+        $copy_tests_folder_step_id = ExecutionStep::where('name', ExecutionStep::$COPY_TESTS_FOLDER)->first()->id;
+        $npm_install_execution_step_id = ExecutionStep::where('name', ExecutionStep::$NPM_INSTALL)->first()->id;
+        $npm_run_start_execution_step_id = ExecutionStep::where('name', ExecutionStep::$NPM_RUN_START)->first()->id;
+        $npm_run_tests_execution_step_id = ExecutionStep::where('name', ExecutionStep::$NPM_RUN_TESTS)->first()->id;
+        $delete_temp_directory_execution_step_id = ExecutionStep::where('name', ExecutionStep::$DELETE_TEMP_DIRECTORY)->first()->id;
 
         ProjectExecutionStep::insert([
             [
@@ -102,7 +102,7 @@ class ProjectExecutionStepSeeder extends Seeder
             ],
             [
                 'project_id' => $api_experiment_project_id,
-                'execution_step_id' => $npm_run_build_execution_step_id,
+                'execution_step_id' => $npm_run_start_execution_step_id,
                 'order' => 8,
                 'variables' => null,
                 'created_at' => now(),
@@ -209,7 +209,7 @@ class ProjectExecutionStepSeeder extends Seeder
             ],
             [
                 'project_id' => $auth_experiment_project_id,
-                'execution_step_id' => $npm_run_build_execution_step_id,
+                'execution_step_id' => $npm_run_start_execution_step_id,
                 'order' => 8,
                 'variables' => null,
                 'created_at' => now(),

@@ -16,8 +16,8 @@ use App\Events\CopyTestsFolder\CopyTestsFolderEvent;
 use App\Events\CopyTestsFolder\CopyTestsFolderListener;
 use App\Events\NpmInstall\NpmInstallEvent;
 use App\Events\NpmInstall\NpmInstallListener;
-use App\Events\NpmRunBuild\NpmRunBuildEvent;
-use App\Events\NpmRunBuild\NpmRunBuildListener;
+use App\Events\NpmRunStart\NpmRunStartEvent;
+use App\Events\NpmRunStart\NpmRunStartListener;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
@@ -55,8 +55,8 @@ class EventServiceProvider extends ServiceProvider
         NpmInstallEvent::class => [
             NpmInstallListener::class,
         ],
-        NpmRunBuildEvent::class => [
-            NpmRunBuildListener::class,
+        NpmRunStartEvent::class => [
+            NpmRunStartListener::class,
         ],
     ];
 

@@ -335,6 +335,8 @@
                         stepElement.find(`#${stepData.stepID}_pending_icon`).addClass('hidden');
                         stepElement.find(`#${stepData.stepID}_success_icon`).removeClass('hidden');
                         stepElement.find(`#${stepData.stepID}_failed_icon`).addClass('hidden');
+                        stepElement.find('span').removeClass('text-gray-400');
+                        stepElement.find('span').removeClass('text-red-400');
                         stepElement.find('span').addClass('text-secondary');
                     } else if (stepData.status === 'failed') {
                         stausClass = 'text-red-400';
@@ -342,6 +344,8 @@
                         stepElement.find(`#${stepData.stepID}_pending_icon`).addClass('hidden');
                         stepElement.find(`#${stepData.stepID}_success_icon`).addClass('hidden');
                         stepElement.find(`#${stepData.stepID}_failed_icon`).removeClass('hidden');
+                        stepElement.find('span').removeClass('text-secondary');
+                        stepElement.find('span').removeClass('text-gray-400');
                         stepElement.find('span').addClass('text-red-400');
                     } else {
                         stausClass = 'text-gray-400';
@@ -349,6 +353,8 @@
                         stepElement.find(`#${stepData.stepID}_pending_icon`).removeClass('hidden');
                         stepElement.find(`#${stepData.stepID}_success_icon`).addClass('hidden');
                         stepElement.find(`#${stepData.stepID}_failed_icon`).addClass('hidden');
+                        stepElement.find('span').removeClass('text-red-400');
+                        stepElement.find('span').removeClass('text-secondary');
                         stepElement.find('span').addClass('text-gray-400');
                     }
                     number += 1;                

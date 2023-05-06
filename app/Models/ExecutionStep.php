@@ -26,7 +26,7 @@ class ExecutionStep extends Model
     static $REPLACE_PACKAGE_JSON = 'Replace package.json';
     static $COPY_TESTS_FOLDER = "Copy 'tests' Folder";
     static $NPM_INSTALL = 'NPM Install';
-    static $NPM_RUN_BUILD = 'NPM Run Build';
+    static $NPM_RUN_START = 'NPM Run Start';
     static $NPM_RUN_TESTS = 'NPM Run Tests';
     static $DELETE_TEMP_DIRECTORY = 'Delete Temp Directory';
 

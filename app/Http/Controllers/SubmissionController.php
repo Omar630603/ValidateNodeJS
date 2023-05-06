@@ -7,7 +7,7 @@ use App\Events\CloneRepository\CloneRepositoryEvent;
 use App\Events\CopyTestsFolder\CopyTestsFolderEvent;
 use App\Events\ExamineFolderStructure\ExamineFolderStructureEvent;
 use App\Events\NpmInstall\NpmInstallEvent;
-use App\Events\NpmRunBuild\NpmRunBuildEvent;
+use App\Events\NpmRunStart\NpmRunStartEvent;
 use App\Events\ReplacePackageJson\ReplacePackageJsonEvent;
 use App\Events\UnzipZipFiles\UnzipZipFilesEvent;
 use App\Models\ExecutionStep;
@@ -22,13 +22,6 @@ class SubmissionController extends Controller
 {
     public function index(Request $request)
     {
-        // $submission = Submission::find(1);
-        // $step = ProjectExecutionStep::where('project_id', 1)->where('execution_step_id', 9)->first();
-        // $commands = $step->executionStep->commands;
-        // $process = new Process($commands, $this->getTempDir($submission), null, null, null);
-        // $process->run();
-
-        // dd($process->isSuccessful(), $process->getOutput(), $process->getErrorOutput());
         return view('submissions.index');
     }
 
@@ -185,7 +178,7 @@ class SubmissionController extends Controller
                         } else if ($step->executionStep->name === ExecutionStep::$NPM_INSTALL) {
                             $tempDir = $this->getTempDir($submission);
                             $this->lunchNpmInstallEvent($submission, $tempDir, $step);
-                        } else if ($step->executionStep->name === ExecutionStep::$NPM_RUN_BUILD) {
+                        } else if ($step->executionStep->name === ExecutionStep::$NPM_RUN_START) {
                             $tempDir = $this->getTempDir($submission);
                             $this->lunchNpmRunBuildEvent($submission, $tempDir, $step);
                         }
@@ -194,23 +187,13 @@ class SubmissionController extends Controller
                         // } else if ($step->executionStep->name === ExecutionStep::$DELETE_TEMP_DIRECTORY) {
                         //     $this->lunchDeleteTempDirectoryEvent();
                     }
-                    if ($submission->results->{$step->executionStep->name}->status == Submission::$COMPLETED) {
-                        return response()->json([
-                            'message' => 'Step ' . $step->executionStep->name . ' is ' . $submission->results->{$step->executionStep->name}->status,
-                            'status' => $submission->status,
-                            'results' => $submission->results,
-                            'next_step' => $submission->getNextExecutionStep($request->step_id),
-                            'completion_percentage' => $completion_percentage,
-                        ], 200);
-                    } else {
-                        return response()->json([
-                            'message' => 'Step ' . $step->executionStep->name . ' is ' . $submission->results->{$step->executionStep->name}->status,
-                            'status' => $submission->status,
-                            'results' => $submission->results,
-                            'next_step' => $step,
-                            'completion_percentage' => $completion_percentage,
-                        ], 200);
-                    }
+                    return response()->json([
+                        'message' => 'Step ' . $step->executionStep->name . ' is ' . $submission->results->{$step->executionStep->name}->status,
+                        'status' => $submission->status,
+                        'results' => $submission->results,
+                        'next_step' => ($submission->results->{$step->executionStep->name}->status == Submission::$COMPLETED) ? $submission->getNextExecutionStep($request->step_id) : $step,
+                        'completion_percentage' => $completion_percentage,
+                    ], 200);
                 }
                 return response()->json([
                     'message' => 'Submission is processing meanwhile there is no step to execute',
@@ -344,7 +327,7 @@ class SubmissionController extends Controller
     private function lunchNpmRunBuildEvent($submission, $tempDir, $step)
     {
         $commands = $step->executionStep->commands;
-        event(new NpmRunBuildEvent($submission, $tempDir, $step, $commands));
+        event(new NpmRunStartEvent($submission, $tempDir, $commands));
     }
 
     //     private function lunchNpmRunTestsEvent()
