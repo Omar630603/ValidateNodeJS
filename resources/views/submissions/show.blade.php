@@ -52,18 +52,16 @@
                             $key = explode("=",$testCommandValue)[0];
                             $value = explode("=",$testCommandValue)[1];
                             $testStep = str_replace($key, $value, $command);
+                            $iconID = str_replace(" ", "_", $testStep);
                             @endphp
                             <li class="list-none pl-5">
                                 <div class="flex justify-start gap-2">
                                     <x-pending_icon class="w-[20px] h-[20px] pt-[0.10rem]"
-                                        id="{{$step->id}}_pending_icon_{{$testCommandValue}}" svgWidth='20px'
-                                        svgHeight='20px' />
+                                        id="{{$step->id}}_pending_icon_{{$iconID}}" svgWidth='20px' svgHeight='20px' />
                                     <x-success_icon class="hidden w-[20px] h-[20px] pt-[0.10rem]"
-                                        id="{{$step->id}}_success_icon_{{$testCommandValue}}" svgWidth='20px'
-                                        svgHeight='20px' />
+                                        id="{{$step->id}}_success_icon_{{$iconID}}" svgWidth='20px' svgHeight='20px' />
                                     <x-failed_icon class="hidden w-[20px] h-[20px] pt-[0.10rem]"
-                                        id="{{$step->id}}_failed_icon_{{$testCommandValue}}" svgWidth='20px'
-                                        svgHeight='20px' />
+                                        id="{{$step->id}}_failed_icon_{{$iconID}}" svgWidth='20px' svgHeight='20px' />
                                     <span class="text-gray-400 font-semiblid stepTestNames">{{$testStep}}</span>
                                 </div>
                             </li>
@@ -112,7 +110,7 @@
                     </div>
                     <div class="p-6 text-gray-900 dark:text-gray-100">
                         <div class="text-white mt-5" id="submission_results">
-
+                            Waitting for the submission to progress...
                         </div>
                     </div>
                 </div>
@@ -142,16 +140,13 @@
             let allowedToRefresh = true;
             // variable for the progress bar
             let completion_percentage = 0;
-            // get the current submission
-            let currentSubmission = {
-                results: `<?php echo json_encode($submission->results); ?>`,
-                status: '<?php echo $submission->status; ?>',
-                message: '<?php echo $submission->message; ?>',
-            }
-            // update the UI with the current submission
-            if (currentSubmission.results !== null) {
-                updateUI(currentSubmission);
-            }  
+
+            let old_response = {
+                status: 'pending',
+                message: 'Submission is pending',
+                results: {}
+            };
+            
             // animate the progess bar
             function move(start = 0, end = 100) {
                 var width = start;
@@ -165,6 +160,33 @@
                     }
                 });
             }
+            // get the submission status
+            async function getSubmissionStatus() {
+                try {
+                    await $.ajax({
+                        url: `/submissions/status/submission/{{ $submission->id }}`,
+                        method: 'GET',
+                        headers: {
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                        },
+                        success: function (response) {
+                            checkSubmissionProgress();
+                            if (response.status === 'processing' || response.status === 'pending') {
+                                setTimeout(() => {
+                                    window.requestAnimationFrame(getSubmissionStatus);
+                                }, 2000);
+                            }
+                        },
+                    })
+                } catch (error) {
+                    console.log(error);
+                    const error_response = {
+                        status: 'failed',
+                        message: 'Something went wrong'
+                    };
+                    updateUIFailedStatus(error_response);
+                }
+            }
             // send request to the server to check the submission progress
             async function checkSubmissionProgress() {
                 try {
@@ -176,8 +198,12 @@
                             'X-CSRF-TOKEN': '{{ csrf_token() }}'
                         }
                     });
+                    checkResponse = JSON.stringify(old_response) === JSON.stringify(response);
+                    if (!checkResponse) {
+                        updateUI(response);
+                        old_response = response;
+                    }
                     // update the UI with the response
-                    updateUI(response);
                     // move the progress bar if the completion percentage has changed
                     if (completion_percentage !== response.completion_percentage) {
                         completion_percentage = response.completion_percentage;
@@ -188,11 +214,7 @@
                     if (response.status === 'processing') {
                         if (response.next_step?.id !== undefined) {
                             // the submission is still processing
-                            // wait 1 second and check again
                             loaderElement.removeClass('hidden');
-                            setTimeout(() => {
-                                window.requestAnimationFrame(checkSubmissionProgress);
-                            }, 2000);
                         } else {
                             // the end of the submission steps
                             loaderElement.addClass('hidden');
@@ -216,7 +238,7 @@
                 }
             }
 
-            checkSubmissionProgress();
+            getSubmissionStatus();
 
             function updateUIFailedStatus(response){
                 // hide the loader
@@ -241,7 +263,7 @@
                         // update the submission results and progress bar
                         move(0, 0);
                         submission_message.text("Submssion Message: Restarting");
-                        submission_message.text("Submssion Message: Restarting...");
+                        submission_status.text("Submssion Status: Restarting...");
                         // request the server to refresh the submission
                         requestRefresh();
                     });
@@ -370,11 +392,43 @@
                         if(stepName == 'NPM Run Tests')  {
                             testResultsDiv = ``;
                             stepTestNames.each(function( index ) {
+
+                                const stepTestName = $(`.stepTestNames:contains(${$(this).text()})`).closest('li');
+                                iconID = $(this).text().replaceAll(" ", "_");
+                                if (stepData.testResults[$(this).text()].status === 'completed') {
+                                    teststausClass = 'text-secondary';
+                                    testOutputClass = 'break-words';
+                                    stepTestName.find(`#${stepData.stepID}_pending_icon_${iconID}`).addClass('hidden');
+                                    stepTestName.find(`#${stepData.stepID}_success_icon_${iconID}`).removeClass('hidden');
+                                    stepTestName.find(`#${stepData.stepID}_failed_icon_${iconID}`).addClass('hidden');
+                                    stepTestName.find('span').removeClass('text-gray-400');
+                                    stepTestName.find('span').removeClass('text-red-400');
+                                    stepTestName.find('span').addClass('text-secondary');
+                                } else if (stepData.testResults[$(this).text()].status === 'failed') {
+                                    teststausClass = 'text-red-400';
+                                    testOutputClass = 'break-words';
+                                    stepTestName.find(`#${stepData.stepID}_pending_icon_${iconID}`).addClass('hidden');
+                                    stepTestName.find(`#${stepData.stepID}_success_icon_${iconID}`).addClass('hidden');
+                                    stepTestName.find(`#${stepData.stepID}_failed_icon_${iconID}`).removeClass('hidden');
+                                    stepTestName.find('span').removeClass('text-secondary');
+                                    stepTestName.find('span').removeClass('text-gray-400');
+                                    stepTestName.find('span').addClass('text-red-400');
+                                } else {
+                                    teststausClass = 'text-gray-400';
+                                    testOutputClass = 'text-gray-400 break-words';
+                                    stepTestName.find(`#${stepData.stepID}_pending_icon_${iconID}`).removeClass('hidden');
+                                    stepTestName.find(`#${stepData.stepID}_success_icon_${iconID}`).addClass('hidden');
+                                    stepTestName.find(`#${stepData.stepID}_failed_icon_${iconID}`).addClass('hidden');
+                                    stepTestName.find('span').removeClass('text-red-400');
+                                    stepTestName.find('span').removeClass('text-secondary');
+                                    stepTestName.find('span').addClass('text-gray-400');
+                                }
+
                                 testResultsDiv += `
                                 <div class="text-xs mt-5 border p-5 break-words rounded-md" id="submission_results_${stepData.stepID}_${$(this).text()}">
-                                    <h1 class="text-xs font-semibold text-gray-400 break-words">${$(this).text()}</h1>
-                                    <h2 class="text-xs font-semibold text-gray-400 break-words">Status: Pending</h2>
-                                    <p class="text-xs font-semibold text-gray-400 break-words">Output:</p>
+                                    <h1 class="text-xs font-bold">${$(this).text()}</h1>
+                                    <h2 class="text-xs font-semibold ${teststausClass}">Status: ${stepData.testResults[$(this).text()].status}</h2>
+                                    <p class="text-xs font-semibold ${testOutputClass}">Output: ${stepData.testResults[$(this).text()].output.replaceAll("\n", "<br>").replaceAll("    ", "&emsp;")}</p>
                                 </div>
                                 `;
                             });

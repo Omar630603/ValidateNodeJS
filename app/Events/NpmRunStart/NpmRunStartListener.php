@@ -10,7 +10,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\Process\Process;
 
-class NpmRunStartListener
+class NpmRunStartListener implements ShouldQueue
 {
     /**
      * Create the event listener.
@@ -77,9 +77,10 @@ class NpmRunStartListener
                 Log::error("Failed to NPM run start in folder {$tempDir} " . $process->getErrorOutput());
                 $this->updateSubmissionStatus($submission, Submission::$FAILED, "Failed to start application on port $port");
                 Process::fromShellCommandline("npx kill-port $port")->run();
+                throw new \Exception($process->getErrorOutput());
             }
-        } catch (\Throwable $e) {
-            Log::error("Failed to NPM run start in folder {$tempDir}" . $e->getMessage());
+        } catch (\Throwable $th) {
+            Log::error("Failed to NPM run start in folder {$tempDir}" . $th->getMessage());
             $this->updateSubmissionStatus($submission, Submission::$FAILED, "Failed to start application on port $port");
             Process::fromShellCommandline("npx kill-port $port")->run();
         }

@@ -10,7 +10,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\Process\Process;
 
-class CopyTestsFolderListener
+class CopyTestsFolderListener implements ShouldQueue
 {
     /**
      * Create the event listener.

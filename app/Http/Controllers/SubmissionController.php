@@ -9,6 +9,7 @@ use App\Events\DeleteTempDirectory\DeleteTempDirectoryEvent;
 use App\Events\ExamineFolderStructure\ExamineFolderStructureEvent;
 use App\Events\NpmInstall\NpmInstallEvent;
 use App\Events\NpmRunStart\NpmRunStartEvent;
+use App\Events\NpmRunTests\NpmRunTestsEvent;
 use App\Events\ReplacePackageJson\ReplacePackageJsonEvent;
 use App\Events\UnzipZipFiles\UnzipZipFilesEvent;
 use App\Models\ExecutionStep;
@@ -17,12 +18,12 @@ use App\Models\Submission;
 use App\Models\SubmissionHistory;
 use App\Models\TemporaryFile;
 use Illuminate\Http\Request;
-use Symfony\Component\Process\Process;
 
 class SubmissionController extends Controller
 {
     public function index(Request $request)
     {
+
         return view('submissions.index');
     }
 
@@ -115,6 +116,19 @@ class SubmissionController extends Controller
         return redirect()->route('submissions');
     }
 
+    public function status(Request $request, $submission_id)
+    {
+        $submission = Submission::find($submission_id);
+        if (!$submission) {
+            return response()->json([
+                'message' => 'Submission not found',
+            ], 404);
+        }
+        return response()->json([
+            'status' => $submission->status,
+        ], 200);
+    }
+
     public function process(Request $request, $submission_id)
     {
         $submission = Submission::find($submission_id);
@@ -124,91 +138,72 @@ class SubmissionController extends Controller
                 $submission->initializeResults();
                 $submission->updateStatus(Submission::$PROCESSING);
                 $currentStep = $submission->getCurrentExecutionStep();
-                return response()->json([
-                    'message' => 'Submission is processing',
-                    'status' => $submission->status,
-                    'results' => $submission->results,
-                    'next_step' => $currentStep,
-                    'completion_percentage' => $completion_percentage,
-                ], 200);
+                return $this->returnSubmissionResponse("Submission is processing", $submission->status, $submission->results, $currentStep, $completion_percentage);
             } else if ($submission->status === Submission::$COMPLETED) {
-                return response()->json([
-                    'message' => 'Submission has completed',
-                    'status' => $submission->status,
-                    'results' => $submission->results,
-                    'completion_percentage' => $completion_percentage,
-                ], 200);
+                return $this->returnSubmissionResponse("Submission has completed", $submission->status, $submission->results, null, $completion_percentage);
             } else if ($submission->status === Submission::$FAILED) {
-                return response()->json([
-                    'message' => 'Submission has failed',
-                    'status' => $submission->status,
-                    'results' => $submission->results,
-                    'completion_percentage' => $completion_percentage,
-                ], 200);
+                return $this->returnSubmissionResponse("Submission has failed", $submission->status, $submission->results, null, $completion_percentage);
             } else if ($submission->status === Submission::$PROCESSING) {
                 $step = $submission->getCurrentExecutionStep();
                 if ($step) {
                     if ($submission->results->{$step->executionStep->name}->status == Submission::$PENDING) {
-                        if ($step->executionStep->name === ExecutionStep::$CLONE_REPOSITORY) {
-                            $repoUrl = $submission->path;
-                            $this->lunchCloneRepositoryEvent($submission, $repoUrl, $this->getTempDir($submission), $step);
-                        } else if ($step->executionStep->name === ExecutionStep::$UNZIP_ZIP_FILES) {
-                            $zipFileDir = $submission->getMedia('submissions')->first()->getPath();
-                            $this->lunchUnzipZipFilesEvent($submission, $zipFileDir, $this->getTempDir($submission), $step);
-                        } else if ($step->executionStep->name === ExecutionStep::$EXAMINE_FOLDER_STRUCTURE) {
-                            $this->lunchExamineFolderStructureEvent($submission, $this->getTempDir($submission), $step);
-                        } else if ($step->executionStep->name === ExecutionStep::$ADD_ENV_FILE) {
-                            $envFile = $submission->project->getMedia('project_files')->where('file_name', '.env')->first()->getPath();
-                            $this->lunchAddEnvFileEvent($submission, $envFile, $this->getTempDir($submission), $step);
-                        } else if ($step->executionStep->name === ExecutionStep::$REPLACE_PACKAGE_JSON) {
-                            $packageJson = $submission->project->getMedia('project_files')->where('file_name', 'package.json')->first()->getPath();
-                            $this->lunchReplacePackageJsonEvent($submission, $packageJson, $this->getTempDir($submission), $step);
-                        } else if ($step->executionStep->name === ExecutionStep::$COPY_TESTS_FOLDER) {
-                            $testsDir = [
-                                'testsDirApi' => $submission->project->getMedia('project_tests_api'),
-                                'testsDirWeb' => $submission->project->getMedia('project_tests_web'),
-                                'testsDirImage' => $submission->project->getMedia('project_tests_images'),
-                            ];
-                            $this->lunchCopyTestsFolderEvent($submission, $testsDir, $this->getTempDir($submission), $step);
-                        } else if ($step->executionStep->name === ExecutionStep::$NPM_INSTALL) {
-                            $this->lunchNpmInstallEvent($submission, $this->getTempDir($submission), $step);
-                        } else if ($step->executionStep->name === ExecutionStep::$NPM_RUN_START) {
-                            $this->lunchNpmRunStartEvent($submission, $this->getTempDir($submission), $step);
+                        switch ($step->executionStep->name) {
+                            case ExecutionStep::$CLONE_REPOSITORY:
+                                $this->lunchCloneRepositoryEvent($submission, $submission->path, $this->getTempDir($submission), $step);
+                                break;
+                            case ExecutionStep::$UNZIP_ZIP_FILES:
+                                $zipFileDir = $submission->getMedia('submissions')->first()->getPath();
+                                $this->lunchUnzipZipFilesEvent($submission, $zipFileDir, $this->getTempDir($submission), $step);
+                                break;
+                            case ExecutionStep::$EXAMINE_FOLDER_STRUCTURE:
+                                $this->lunchExamineFolderStructureEvent($submission, $this->getTempDir($submission), $step);
+                                break;
+                            case ExecutionStep::$ADD_ENV_FILE:
+                                $envFile = $submission->project->getMedia('project_files')->where('file_name', '.env')->first()->getPath();
+                                $this->lunchAddEnvFileEvent($submission, $envFile, $this->getTempDir($submission), $step);
+                                break;
+                            case ExecutionStep::$REPLACE_PACKAGE_JSON:
+                                $packageJson = $submission->project->getMedia('project_files')->where('file_name', 'package.json')->first()->getPath();
+                                $this->lunchReplacePackageJsonEvent($submission, $packageJson, $this->getTempDir($submission), $step);
+                                break;
+                            case ExecutionStep::$COPY_TESTS_FOLDER:
+                                $this->lunchCopyTestsFolderEvent($submission, $this->getTempDir($submission), $step);
+                                break;
+                            case ExecutionStep::$NPM_INSTALL:
+                                $this->lunchNpmInstallEvent($submission, $this->getTempDir($submission), $step);
+                                break;
+                            case ExecutionStep::$NPM_RUN_START:
+                                $this->lunchNpmRunStartEvent($submission, $this->getTempDir($submission), $step);
+                                break;
+                            case ExecutionStep::$NPM_RUN_TESTS:
+                                $this->lunchNpmRunTestsEvent($submission, $this->getTempDir($submission), $step);
+                                break;
+                            case ExecutionStep::$DELETE_TEMP_DIRECTORY:
+                                $this->lunchDeleteTempDirectoryEvent($submission, $this->getTempDir($submission), $step);
+                                break;
+                            default:
+                                break;
                         }
-                        // else if ($step->executionStep->name === ExecutionStep::$NPM_RUN_TESTS) {
-                        //     $this->lunchNpmRunTestsEvent();}
-                        else if ($step->executionStep->name === ExecutionStep::$DELETE_TEMP_DIRECTORY) {
-                            $this->lunchDeleteTempDirectoryEvent($submission, $this->getTempDir($submission), $step);
-                        }
-                        return response()->json([
-                            'message' => 'Step ' . $step->executionStep->name . ' is ' . $submission->results->{$step->executionStep->name}->status,
-                            'status' => $submission->status,
-                            'results' => $submission->results,
-                            'next_step' => $submission->getNextExecutionStep($request->step_id),
-                            'completion_percentage' => $completion_percentage,
-                        ], 200);
-                    } else {
-                        return response()->json([
-                            'message' => 'Step ' . $step->executionStep->name . ' is ' . $submission->results->{$step->executionStep->name}->status,
-                            'status' => $submission->status,
-                            'results' => $submission->results,
-                            'next_step' => $submission->getNextExecutionStep($request->step_id),
-                            'completion_percentage' => $completion_percentage,
-                        ], 200);
                     }
+                    return $this->returnSubmissionResponse('Step ' . $step->executionStep->name . ' is ' . $submission->results->{$step->executionStep->name}->status, $submission->status, $submission->results, $submission->getNextExecutionStep($request->step_id), $completion_percentage);
                 }
-                return response()->json([
-                    'message' => 'Submission is processing meanwhile there is no step to execute',
-                    'status' => $submission->status,
-                    'results' => $submission->results,
-                    'next_step' => null,
-                    'completion_percentage' => $completion_percentage,
-                ], 200);
+                return $this->returnSubmissionResponse('Submission is processing meanwhile there is no step to execute', $submission->status, $submission->results, $submission->getNextExecutionStep($request->step_id), $completion_percentage);
             }
         }
         return response()->json([
             'message' => 'Submission not found',
         ], 404);
+    }
+
+    public function returnSubmissionResponse($message, $status, $results, $next_step = null, $completion_percentage)
+    {
+        return response()->json([
+            'message' => $message,
+            'status' => $status,
+            'results' => $results,
+            'next_step' => $next_step,
+            'completion_percentage' => $completion_percentage,
+        ], 200);
     }
 
     public function refresh(Request $request, $submission_id)
@@ -321,8 +316,13 @@ class SubmissionController extends Controller
         event(new ReplacePackageJsonEvent($submission, $packageJson, $tempDir, $commands));
     }
 
-    private function lunchCopyTestsFolderEvent($submission, $testsDir, $tempDir, $step)
+    private function lunchCopyTestsFolderEvent($submission, $tempDir, $step)
     {
+        $testsDir = [
+            'testsDirApi' => $submission->project->getMedia('project_tests_api'),
+            'testsDirWeb' => $submission->project->getMedia('project_tests_web'),
+            'testsDirImage' => $submission->project->getMedia('project_tests_images'),
+        ];
         // command 1: [1]cp [2]-r [3]{{testsDir}} [4]{{tempDir}}
         $commands = $step->executionStep->commands;
         $step_variables = $step->variables;
@@ -362,10 +362,19 @@ class SubmissionController extends Controller
         event(new NpmRunStartEvent($submission, $tempDir, $commands));
     }
 
-    //     private function lunchNpmRunTestsEvent()
-    //     {
-    //         event(new NpmRunTestsEvent());
-    //     }
+    private function lunchNpmRunTestsEvent($submission, $tempDir, $step)
+    {
+        $commands = [];
+        $tests = $submission->project->projectExecutionSteps->where('execution_step_id', $step->executionStep->id)->first()->variables;
+        foreach ($tests as $testCommandValue) {
+            $command = implode(" ", $step->executionStep->commands);
+            $key = explode("=", $testCommandValue)[0];
+            $value = explode("=", $testCommandValue)[1];
+            $testName = str_replace($key, $value, $command);
+            array_push($commands, explode(" ", $testName));
+        }
+        event(new NpmRunTestsEvent($submission, $tempDir, $commands));
+    }
 
     private function lunchDeleteTempDirectoryEvent($submission, $tempDir, $step, $commands = null)
     {

@@ -18,6 +18,8 @@ use App\Events\NpmInstall\NpmInstallEvent;
 use App\Events\NpmInstall\NpmInstallListener;
 use App\Events\NpmRunStart\NpmRunStartEvent;
 use App\Events\NpmRunStart\NpmRunStartListener;
+use App\Events\NpmRunTests\NpmRunTestsEvent;
+use App\Events\NpmRunTests\NpmRunTestsListener;
 use App\Events\DeleteTempDirectory\DeleteTempDirectoryEvent;
 use App\Events\DeleteTempDirectory\DeleteTempDirectoryListener;
 use Illuminate\Auth\Events\Registered;
@@ -59,6 +61,9 @@ class EventServiceProvider extends ServiceProvider
         ],
         NpmRunStartEvent::class => [
             NpmRunStartListener::class,
+        ],
+        NpmRunTestsEvent::class => [
+            NpmRunTestsListener::class,
         ],
         DeleteTempDirectoryEvent::class => [
             DeleteTempDirectoryListener::class,

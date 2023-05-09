@@ -135,6 +135,14 @@ class Submission extends Model implements HasMedia
         $this->updateResults($results);
     }
 
+    public function updateOneTestResult($step_name, $test_name, $status, $output)
+    {
+        $results = $this->results;
+        $results->$step_name->testResults->$test_name->status = $status;
+        $results->$step_name->testResults->$test_name->output = $output;
+        $this->updateResults($results);
+    }
+
     public function updateResults($results)
     {
         $this->results = $results;

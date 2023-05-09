@@ -18,7 +18,7 @@ export default defineConfig({
             cert: "D:/laragon/etc/ssl/laragon.crt",
         },
         watch: {
-            ignored: ["public/storage/**/*", "storage/**/*"],
+            ignored: ["public/storage/**/*", "storage/**/*", "**/.env"],
             // usePolling: true,
         },
     },
