@@ -10,7 +10,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\Process\Process;
 
-class CopyTestsFolderListener implements ShouldQueue
+class CopyTestsFolderListener
 {
     /**
      * Create the event listener.
@@ -59,7 +59,7 @@ class CopyTestsFolderListener implements ShouldQueue
     private function updateSubmissionStatus(Submission $submission, string $status, string $output): void
     {
         $stepName = ExecutionStep::$COPY_TESTS_FOLDER;
-        $submission->updateOneResult($stepName, $status, $output);
+        if ($status != Submission::$PROCESSING) $submission->updateOneResult($stepName, $status, $output);
         if ($status != Submission::$COMPLETED) $submission->updateStatus($status);
     }
 }

@@ -53,7 +53,7 @@ class CloneRepositoryListener implements ShouldQueue
     private function updateSubmissionStatus(Submission $submission, string $status, string $output): void
     {
         $stepName = ExecutionStep::$CLONE_REPOSITORY;
-        $submission->updateOneResult($stepName, $status, $output);
+        if ($status != Submission::$PROCESSING) $submission->updateOneResult($stepName, $status, $output);
         if ($status != Submission::$COMPLETED) $submission->updateStatus($status);
     }
 }

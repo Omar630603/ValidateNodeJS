@@ -10,7 +10,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\Process\Process;
 
-class AddEnvFileListener implements ShouldQueue
+class AddEnvFileListener
 {
     /**
      * Create the event listener.
@@ -50,7 +50,7 @@ class AddEnvFileListener implements ShouldQueue
     private function updateSubmissionStatus(Submission $submission, string $status, string $output): void
     {
         $stepName = ExecutionStep::$ADD_ENV_FILE;
-        $submission->updateOneResult($stepName, $status, $output);
+        if ($status != Submission::$PROCESSING) $submission->updateOneResult($stepName, $status, $output);
         if ($status != Submission::$COMPLETED) $submission->updateStatus($status);
     }
 }

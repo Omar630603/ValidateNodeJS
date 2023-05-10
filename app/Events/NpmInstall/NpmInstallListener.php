@@ -35,7 +35,7 @@ class NpmInstallListener implements ShouldQueue
                 Process::fromShellCommandline('cp -r ' . $node_modulesFolderPath . ' ' . $event->tempDir, null, null, null, null)->run();
             }
 
-            $process = new Process($event->command, $event->tempDir, null, null, null);
+            $process = new Process($event->command, $event->tempDir, null, null, 120);
             $process->run();
             if ($process->isSuccessful()) {
                 Log::info("NPM installed in folder {$event->tempDir}");
@@ -56,7 +56,7 @@ class NpmInstallListener implements ShouldQueue
     private function updateSubmissionStatus(Submission $submission, string $status, string $output): void
     {
         $stepName = ExecutionStep::$NPM_INSTALL;
-        $submission->updateOneResult($stepName, $status, $output);
+        if ($status != Submission::$PROCESSING) $submission->updateOneResult($stepName, $status, $output);
         if ($status != Submission::$COMPLETED) $submission->updateStatus($status);
     }
 }

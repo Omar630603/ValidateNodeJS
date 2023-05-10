@@ -10,7 +10,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\Process\Process;
 
-class ExamineFolderStructureListener implements ShouldQueue
+class ExamineFolderStructureListener
 {
     /**
      * Create the event listener.
@@ -114,7 +114,7 @@ class ExamineFolderStructureListener implements ShouldQueue
     private function updateSubmissionStatus(Submission $submission, string $status, string $output): void
     {
         $stepName = ExecutionStep::$EXAMINE_FOLDER_STRUCTURE;
-        $submission->updateOneResult($stepName, $status, $output);
+        if ($status != Submission::$PROCESSING) $submission->updateOneResult($stepName, $status, $output);
         if ($status != Submission::$COMPLETED) $submission->updateStatus($status);
     }
 }

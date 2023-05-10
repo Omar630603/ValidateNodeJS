@@ -147,6 +147,7 @@ class SubmissionController extends Controller
                 $step = $submission->getCurrentExecutionStep();
                 if ($step) {
                     if ($submission->results->{$step->executionStep->name}->status == Submission::$PENDING) {
+                        $submission->updateOneResult($step->executionStep->name, Submission::$PROCESSING, " ");
                         switch ($step->executionStep->name) {
                             case ExecutionStep::$CLONE_REPOSITORY:
                                 $this->lunchCloneRepositoryEvent($submission, $submission->path, $this->getTempDir($submission), $step);

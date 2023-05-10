@@ -36,7 +36,8 @@ class NpmRunTestsListener implements ShouldQueue
                 $command_string = implode(" ", $command);
                 Log::info("Running {$command_string} in folder {$event->tempDir}");
                 $this->updateSubmissionTestsResultsStatus($command_string, $submission, Submission::$PROCESSING, "Running");
-                $process = new Process($command, $event->tempDir, null, null, null);
+                usleep(100000);
+                $process = new Process($command, $event->tempDir, null, null, 120);
                 $process->run();
                 if ($process->isSuccessful()) {
                     $pass_all = true;
@@ -72,7 +73,7 @@ class NpmRunTestsListener implements ShouldQueue
     private function updateSubmissionStatus(Submission $submission, string $status, string $output): void
     {
         $stepName = ExecutionStep::$NPM_RUN_TESTS;
-        $submission->updateOneResult($stepName, $status, $output);
+        if ($status != Submission::$PROCESSING) $submission->updateOneResult($stepName, $status, $output);
         if ($status != Submission::$COMPLETED) $submission->updateStatus($status);
     }
 }

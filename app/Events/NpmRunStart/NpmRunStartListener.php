@@ -53,7 +53,7 @@ class NpmRunStartListener implements ShouldQueue
         $output = "";
         try {
             // processing
-            $process = new Process($command, $tempDir, null, null, null);
+            $process = new Process($command, $tempDir, null, null, 120);
             $process->start();
 
             $fail = true;
@@ -117,7 +117,7 @@ class NpmRunStartListener implements ShouldQueue
     private function updateSubmissionStatus(Submission $submission, string $status, string $output): void
     {
         $stepName = ExecutionStep::$NPM_RUN_START;
-        $submission->updateOneResult($stepName, $status, $output);
+        if ($status != Submission::$PROCESSING) $submission->updateOneResult($stepName, $status, $output);
         if ($status != Submission::$COMPLETED) $submission->updateStatus($status);
     }
 }

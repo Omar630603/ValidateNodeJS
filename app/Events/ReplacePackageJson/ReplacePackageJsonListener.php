@@ -10,7 +10,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\Process\Process;
 
-class ReplacePackageJsonListener implements ShouldQueue
+class ReplacePackageJsonListener
 {
     /**
      * Create the event listener.
@@ -53,7 +53,7 @@ class ReplacePackageJsonListener implements ShouldQueue
     private function updateSubmissionStatus(Submission $submission, string $status, string $output): void
     {
         $stepName = ExecutionStep::$REPLACE_PACKAGE_JSON;
-        $submission->updateOneResult($stepName, $status, $output);
+        if ($status != Submission::$PROCESSING) $submission->updateOneResult($stepName, $status, $output);
         if ($status != Submission::$COMPLETED) $submission->updateStatus($status);
     }
 }

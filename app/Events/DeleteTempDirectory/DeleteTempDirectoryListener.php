@@ -31,13 +31,13 @@ class DeleteTempDirectoryListener implements ShouldQueue
         try {
             // processing
             foreach ($event->command as $key => $value) {
-                $process = new Process($value, null, null, null, null);
+                $process = new Process($value, null, null, null, 120);
                 $process->run();
                 if ($process->isSuccessful()) {
                     Log::info('Command ' . implode(" ", $value) . ' is successful');
                 } else {
                     Log::error("Failed to delete folder {$event->tempDir} "   . $process->getErrorOutput());
-                    // $this->updateSubmissionStatus($submission, Submission::$FAILED, "Failed to delete folder");
+                    $this->updateSubmissionStatus($submission, Submission::$FAILED, "Failed to delete folder");
                 }
             }
             // completed
@@ -52,7 +52,7 @@ class DeleteTempDirectoryListener implements ShouldQueue
     private function updateSubmissionStatus(Submission $submission, string $status, string $output): void
     {
         $stepName = ExecutionStep::$DELETE_TEMP_DIRECTORY;
-        $submission->updateOneResult($stepName, $status, $output);
+        if ($status != Submission::$PROCESSING) $submission->updateOneResult($stepName, $status, $output);
         if ($status != Submission::$COMPLETED) $submission->updateStatus($status);
     }
 }
