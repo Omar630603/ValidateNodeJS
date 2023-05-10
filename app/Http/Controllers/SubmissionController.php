@@ -2,28 +2,29 @@
 
 namespace App\Http\Controllers;
 
-use App\Events\AddEnvFile\AddEnvFileEvent;
-use App\Events\CloneRepository\CloneRepositoryEvent;
-use App\Events\CopyTestsFolder\CopyTestsFolderEvent;
-use App\Events\DeleteTempDirectory\DeleteTempDirectoryEvent;
-use App\Events\ExamineFolderStructure\ExamineFolderStructureEvent;
-use App\Events\NpmInstall\NpmInstallEvent;
-use App\Events\NpmRunStart\NpmRunStartEvent;
-use App\Events\NpmRunTests\NpmRunTestsEvent;
-use App\Events\ReplacePackageJson\ReplacePackageJsonEvent;
-use App\Events\UnzipZipFiles\UnzipZipFilesEvent;
+use App\Jobs\AddEnvFile;
+use App\Jobs\CloneRepository;
+use App\Jobs\CopyTestsFolder;
+use App\Jobs\DeleteTempDirectory;
+use App\Jobs\ExamineFolderStructure;
+use App\Jobs\NpmInstall;
+use App\Jobs\NpmRunStart;
+use App\Jobs\NpmRunTests;
+use App\Jobs\ReplacePackageJson;
+use App\Jobs\UnzipZipFiles;
 use App\Models\ExecutionStep;
 use App\Models\Project;
 use App\Models\Submission;
 use App\Models\SubmissionHistory;
 use App\Models\TemporaryFile;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Symfony\Component\Process\Process;
 
 class SubmissionController extends Controller
 {
     public function index(Request $request)
     {
-
         return view('submissions.index');
     }
 
@@ -126,6 +127,7 @@ class SubmissionController extends Controller
         }
         return response()->json([
             'status' => $submission->status,
+            'step' => $submission->getCurrentExecutionStep(),
         ], 200);
     }
 
@@ -150,45 +152,57 @@ class SubmissionController extends Controller
                         $submission->updateOneResult($step->executionStep->name, Submission::$PROCESSING, " ");
                         switch ($step->executionStep->name) {
                             case ExecutionStep::$CLONE_REPOSITORY:
-                                $this->lunchCloneRepositoryEvent($submission, $submission->path, $this->getTempDir($submission), $step);
+                                $this->lunchCloneRepositoryJob($submission, $submission->path, $this->getTempDir($submission), $step);
                                 break;
                             case ExecutionStep::$UNZIP_ZIP_FILES:
                                 $zipFileDir = $submission->getMedia('submissions')->first()->getPath();
-                                $this->lunchUnzipZipFilesEvent($submission, $zipFileDir, $this->getTempDir($submission), $step);
+                                $this->lunchUnzipZipFilesJob($submission, $zipFileDir, $this->getTempDir($submission), $step);
                                 break;
                             case ExecutionStep::$EXAMINE_FOLDER_STRUCTURE:
-                                $this->lunchExamineFolderStructureEvent($submission, $this->getTempDir($submission), $step);
+                                $this->lunchExamineFolderStructureJob($submission, $this->getTempDir($submission), $step);
                                 break;
                             case ExecutionStep::$ADD_ENV_FILE:
                                 $envFile = $submission->project->getMedia('project_files')->where('file_name', '.env')->first()->getPath();
-                                $this->lunchAddEnvFileEvent($submission, $envFile, $this->getTempDir($submission), $step);
+                                $this->lunchAddEnvFileJob($submission, $envFile, $this->getTempDir($submission), $step);
                                 break;
                             case ExecutionStep::$REPLACE_PACKAGE_JSON:
                                 $packageJson = $submission->project->getMedia('project_files')->where('file_name', 'package.json')->first()->getPath();
-                                $this->lunchReplacePackageJsonEvent($submission, $packageJson, $this->getTempDir($submission), $step);
+                                $this->lunchReplacePackageJsonJob($submission, $packageJson, $this->getTempDir($submission), $step);
                                 break;
                             case ExecutionStep::$COPY_TESTS_FOLDER:
-                                $this->lunchCopyTestsFolderEvent($submission, $this->getTempDir($submission), $step);
+                                $this->lunchCopyTestsFolderJob($submission, $this->getTempDir($submission), $step);
                                 break;
                             case ExecutionStep::$NPM_INSTALL:
-                                $this->lunchNpmInstallEvent($submission, $this->getTempDir($submission), $step);
+                                $this->lunchNpmInstallJob($submission, $this->getTempDir($submission), $step);
                                 break;
                             case ExecutionStep::$NPM_RUN_START:
-                                $this->lunchNpmRunStartEvent($submission, $this->getTempDir($submission), $step);
+                                $this->lunchNpmRunStartJob($submission, $this->getTempDir($submission), $step);
                                 break;
                             case ExecutionStep::$NPM_RUN_TESTS:
-                                $this->lunchNpmRunTestsEvent($submission, $this->getTempDir($submission), $step);
+                                $this->lunchNpmRunTestsJob($submission, $this->getTempDir($submission), $step);
                                 break;
                             case ExecutionStep::$DELETE_TEMP_DIRECTORY:
-                                $this->lunchDeleteTempDirectoryEvent($submission, $this->getTempDir($submission), $step);
+                                $this->lunchDeleteTempDirectoryJob($submission, $this->getTempDir($submission), $step);
                                 break;
                             default:
                                 break;
                         }
                     }
-                    return $this->returnSubmissionResponse('Step ' . $step->executionStep->name . ' is ' . $submission->results->{$step->executionStep->name}->status, $submission->status, $submission->results, $submission->getNextExecutionStep($request->step_id), $completion_percentage);
+                    return $this->returnSubmissionResponse(
+                        'Step ' . $step->executionStep->name . ' is ' . $submission->results->{$step->executionStep->name}->status,
+                        $submission->status,
+                        $submission->results,
+                        $step,
+                        $completion_percentage
+                    );
                 }
-                return $this->returnSubmissionResponse('Submission is processing meanwhile there is no step to execute', $submission->status, $submission->results, $submission->getNextExecutionStep($request->step_id), $completion_percentage);
+                return $this->returnSubmissionResponse(
+                    'Submission is processing meanwhile there is no step to execute',
+                    $submission->status,
+                    $submission->results,
+                    $step,
+                    $completion_percentage
+                );
             }
         }
         return response()->json([
@@ -223,7 +237,15 @@ class SubmissionController extends Controller
                 ];
             }
             // Delete temp directory
-            $this->lunchDeleteTempDirectoryEvent($submission, $this->getTempDir($submission), null, $commands);
+            foreach ($commands as $command) {
+                $process = new Process($command, null, null, null, 120);
+                $process->run();
+                if ($process->isSuccessful()) {
+                    Log::info('Command ' . implode(" ", $command) . ' is successful');
+                } else {
+                    Log::error('Command ' . implode(" ", $command) . ' has failed '   . $process->getErrorOutput());
+                }
+            }
             // Update submission status
             $submission->updateStatus(Submission::$PENDING);
             $current_attempt = $submission->attempts;
@@ -272,52 +294,52 @@ class SubmissionController extends Controller
         }, $step->executionStep->commands);
     }
 
-    private function lunchCloneRepositoryEvent($submission, $repoUrl, $tempDir, $step)
+    private function lunchCloneRepositoryJob($submission, $repoUrl, $tempDir, $step)
     {
         $commands = $step->executionStep->commands;
         $step_variables = $step->variables;
         $values = ["{{repoUrl}}" => $repoUrl, '{{tempDir}}' => $tempDir];
         $commands = $this->replaceCommandArraysWithValues($step_variables, $values, $step);
-        event(new CloneRepositoryEvent($submission, $repoUrl, $tempDir, $commands));
+        dispatch(new CloneRepository($submission, $repoUrl, $tempDir, $commands));
     }
 
-    private function lunchUnzipZipFilesEvent($submission, $zipFileDir, $tempDir, $step)
+    private function lunchUnzipZipFilesJob($submission, $zipFileDir, $tempDir, $step)
     {
         $commands = $step->executionStep->commands;
         $step_variables = $step->variables;
         $values = ['{{zipFileDir}}' => $zipFileDir, '{{tempDir}}' => $tempDir];
         $commands = $this->replaceCommandArraysWithValues($step_variables, $values, $step);
-        event(new UnzipZipFilesEvent($submission, $zipFileDir, $tempDir, $commands));
+        dispatch(new UnzipZipFiles($submission, $zipFileDir, $tempDir, $commands));
     }
 
-    private function lunchExamineFolderStructureEvent($submission, $tempDir, $step)
+    private function lunchExamineFolderStructureJob($submission, $tempDir, $step)
     {
         $commands = $step->executionStep->commands;
         $step_variables = $step->variables;
         $values = ['{{tempDir}}' => $tempDir];
         $commands = $this->replaceCommandArraysWithValues($step_variables, $values, $step);
-        event(new ExamineFolderStructureEvent($submission, $tempDir, $commands));
+        dispatch(new ExamineFolderStructure($submission, $tempDir, $commands));
     }
 
-    private function lunchAddEnvFileEvent($submission, $envFile, $tempDir, $step)
+    private function lunchAddEnvFileJob($submission, $envFile, $tempDir, $step)
     {
         $commands = $step->executionStep->commands;
         $step_variables = $step->variables;
         $values = ['{{envFile}}' => $envFile, '{{tempDir}}' => $tempDir];
         $commands = $this->replaceCommandArraysWithValues($step_variables, $values, $step);
-        event(new AddEnvFileEvent($submission, $envFile, $tempDir, $commands));
+        dispatch(new AddEnvFile($submission, $envFile, $tempDir, $commands));
     }
 
-    private function lunchReplacePackageJsonEvent($submission, $packageJson, $tempDir, $step)
+    private function lunchReplacePackageJsonJob($submission, $packageJson, $tempDir, $step)
     {
         $commands = $step->executionStep->commands;
         $step_variables = $step->variables;
         $values = ['{{packageJson}}' => $packageJson, '{{tempDir}}' => $tempDir];
         $commands = $this->replaceCommandArraysWithValues($step_variables, $values, $step);
-        event(new ReplacePackageJsonEvent($submission, $packageJson, $tempDir, $commands));
+        dispatch(new ReplacePackageJson($submission, $packageJson, $tempDir, $commands));
     }
 
-    private function lunchCopyTestsFolderEvent($submission, $tempDir, $step)
+    private function lunchCopyTestsFolderJob($submission, $tempDir, $step)
     {
         $testsDir = [
             'testsDirApi' => $submission->project->getMedia('project_tests_api'),
@@ -345,25 +367,28 @@ class SubmissionController extends Controller
             $commands[3] = $tempDir . '/tests/web/images';
             array_push($commandsArray, $commands);
         }
-        event(new CopyTestsFolderEvent($submission, $testsDir, $tempDir, $commandsArray));
+        dispatch(new CopyTestsFolder($submission, $testsDir, $tempDir, $commandsArray));
     }
 
-    private function lunchNpmInstallEvent($submission, $tempDir, $step)
+    private function lunchNpmInstallJob($submission, $tempDir, $step)
     {
         $commands = $step->executionStep->commands;
         $step_variables = $step->variables;
         $values = ['{{options}}' => " "];
         $commands = $this->replaceCommandArraysWithValues($step_variables, $values, $step);
-        event(new NpmInstallEvent($submission, $tempDir, $commands));
+        $package_lock_json_path = public_path() . '/assets/projects/' . $submission->project->title . '/files/package-lock.json'; // specify the file name to check
+        $node_modulesFolderPath = public_path() . '/assets/projects/' . $submission->project->title . '/node_modules'; // specify the folder name to check
+        $no_copy = !is_dir($node_modulesFolderPath) || !file_exists($package_lock_json_path);
+        dispatch(new NpmInstall($submission, $tempDir, $commands, $no_copy));
     }
 
-    private function lunchNpmRunStartEvent($submission, $tempDir, $step)
+    private function lunchNpmRunStartJob($submission, $tempDir, $step)
     {
         $commands = $step->executionStep->commands;
-        event(new NpmRunStartEvent($submission, $tempDir, $commands));
+        dispatch(new NpmRunStart($submission, $tempDir, $commands));
     }
 
-    private function lunchNpmRunTestsEvent($submission, $tempDir, $step)
+    private function lunchNpmRunTestsJob($submission, $tempDir, $step)
     {
         $commands = [];
         $tests = $submission->project->projectExecutionSteps->where('execution_step_id', $step->executionStep->id)->first()->variables;
@@ -374,12 +399,12 @@ class SubmissionController extends Controller
             $testName = str_replace($key, $value, $command);
             array_push($commands, explode(" ", $testName));
         }
-        event(new NpmRunTestsEvent($submission, $tempDir, $commands));
+        dispatch(new NpmRunTests($submission, $tempDir, $commands));
     }
 
-    private function lunchDeleteTempDirectoryEvent($submission, $tempDir, $step, $commands = null)
+    private function lunchDeleteTempDirectoryJob($submission, $tempDir, $step, $commands = null)
     {
         if ($commands == null) $commands = [$step->executionStep->commands];
-        event(new DeleteTempDirectoryEvent($submission, $tempDir, $commands));
+        dispatch(new DeleteTempDirectory($submission, $tempDir, $commands));
     }
 }

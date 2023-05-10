@@ -1,39 +1,46 @@
 <?php
 
-namespace App\Events\NpmRunStart;
+namespace App\Jobs;
 
-use App\Events\NpmRunStart\NpmRunStartEvent;
 use App\Models\ExecutionStep;
 use App\Models\Submission;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\Process\Process;
 
-class NpmRunStartListener implements ShouldQueue
+class NpmRunStart implements ShouldQueue
 {
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    public $submission;
+    public $tempDir;
+    public $command;
     /**
-     * Create the event listener.
+     * Create a new job instance.
      */
-    public function __construct()
+    public function __construct($submission, $tempDir, $command)
     {
-        //
+        $this->submission = $submission;
+        $this->tempDir = $tempDir;
+        $this->command = $command;
     }
 
     /**
-     * Handle the event.
-     *
-     * @param NpmRunStartEvent $event
-     * @return void
+     * Execute the job.
      */
-    public function handle(NpmRunStartEvent $event): void
+    public function handle(): void
     {
-        $submission = $event->submission;
-        $tempDir = $event->tempDir;
-        $command = $event->command;
+        $submission = $this->submission;
+        $tempDir = $this->tempDir;
+        $command = $this->command;
 
 
-        Log::info("NPM run start is processing in folder {$event->tempDir}");
+        Log::info("NPM run start is processing in folder {$this->tempDir}");
         $this->updateSubmissionStatus($submission, Submission::$PROCESSING, "NPM run start is processing");
         // Change port number in .env file
         $port = $this->getAvailablePort();
@@ -53,11 +60,12 @@ class NpmRunStartListener implements ShouldQueue
         $output = "";
         try {
             // processing
-            $process = new Process($command, $tempDir, null, null, 120);
+            $process = new Process($command, $tempDir, null, null, null);
             $process->start();
+            $process_pid = $process->getPid();
 
             $fail = true;
-            $timeout = 30; // in seconds
+            $timeout = 60; // in seconds
             $startTime = time();
             while (time() - $startTime < $timeout) {
                 $output = $process->getOutput();
@@ -74,9 +82,10 @@ class NpmRunStartListener implements ShouldQueue
             // timeout reached, kill the process and update the submission status
             if ($fail) {
                 $process->stop();
-                Log::error("Failed to NPM run start in folder {$tempDir} " . $process->getErrorOutput());
-                $this->updateSubmissionStatus($submission, Submission::$FAILED, "Failed to start application on port $port");
+                Log::error("Failed to NPM run start in folder {$tempDir} due to timeout " . $process->getErrorOutput());
+                $this->updateSubmissionStatus($submission, Submission::$FAILED, "Failed to start application on port $port due to timeout");
                 Process::fromShellCommandline("npx kill-port $port")->run();
+                Process::fromShellCommandline('kill ' . $process_pid)->run();
                 throw new \Exception($process->getErrorOutput());
             }
         } catch (\Throwable $th) {

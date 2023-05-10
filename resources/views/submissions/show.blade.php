@@ -140,13 +140,14 @@
             let allowedToRefresh = true;
             // variable for the progress bar
             let completion_percentage = 0;
-
+            // variable for the response
             let old_response = {
                 status: 'pending',
                 message: 'Submission is pending',
                 results: {}
             };
-            
+            // variable for checking if all the steps are completed
+            let checkResponse = false;
             // animate the progess bar
             function move(start = 0, end = 100) {
                 var width = start;
@@ -172,9 +173,11 @@
                         success: function (response) {
                             checkSubmissionProgress();
                             if (response.status === 'processing' || response.status === 'pending') {
-                                setTimeout(() => {
-                                    window.requestAnimationFrame(getSubmissionStatus);
-                                }, 2000);
+                                if (response.step !== null) {   
+                                    setTimeout(() => {
+                                        window.requestAnimationFrame(getSubmissionStatus);
+                                    }, 2000);
+                                }
                             }
                         },
                     })
@@ -198,10 +201,26 @@
                             'X-CSRF-TOKEN': '{{ csrf_token() }}'
                         }
                     });
+                    console.log(response);
                     checkResponse = JSON.stringify(old_response) === JSON.stringify(response);
                     if (!checkResponse) {
                         updateUI(response);
                         old_response = response;
+                    }
+                    if(response.message === 'Submission is processing meanwhile there is no step to execute'){
+                        // run through all the results if there is on of them failed the checkResponse will be false
+                        for (const [stepName, stepData] of Object.entries(response.results)) {
+                            if (stepData.status === 'failed') {
+                                checkResponse = false;
+                            }
+                        }
+                        if (checkResponse) {
+                            // if all the steps are completed
+                            updateUICompletedStatus(response);
+                        } else {
+                            // if one of the steps failed
+                            updateUIFailedStatus(response);
+                        }
                     }
                     // update the UI with the response
                     // move the progress bar if the completion percentage has changed
@@ -369,6 +388,7 @@
                             stepElement.find('span').removeClass('text-gray-400');
                             stepElement.find('span').removeClass('text-red-400');
                             stepElement.find('span').addClass('text-secondary');
+                            checkResponse = true;
                         } else if (stepData.status === 'failed') {
                             stausClass = 'text-red-400';
                             outputClass = 'break-words';

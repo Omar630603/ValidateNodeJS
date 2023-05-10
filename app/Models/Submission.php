@@ -175,18 +175,24 @@ class Submission extends Model implements HasMedia
                     break;
                 }
             }
+
+            if (!$current_step) {
+                $have_failed_steps = false;
+                foreach ($steps as $step) {
+                    if ($results->{$step->executionStep->name}?->status == self::$FAILED) {
+                        $have_failed_steps = true;
+                        break;
+                    }
+                }
+                if ($have_failed_steps) {
+                    $this->updateStatus(self::$FAILED);
+                } else {
+                    $this->updateStatus(self::$COMPLETED);
+                }
+            }
+
             return $current_step;
         }
-    }
-
-    public function getNextExecutionStep($step_id)
-    {
-        $current_step = $this->getCurrentExecutionStep($step_id);
-        // get the next step with the bigger order number
-        $next_step = $this->getExecutionSteps()->first(function ($step) use ($current_step) {
-            return $step->order > $current_step->order;
-        });
-        return $next_step;
     }
 
     public function getTotalSteps()
@@ -200,7 +206,7 @@ class Submission extends Model implements HasMedia
         $completed_steps = 0;
         if ($results != null) {
             foreach ($results as $result) {
-                if ($result->status == self::$COMPLETED) {
+                if ($result->status == self::$COMPLETED || $result->status == self::$FAILED) {
                     $completed_steps++;
                 }
             }

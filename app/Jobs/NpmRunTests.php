@@ -1,65 +1,79 @@
 <?php
 
-namespace App\Events\NpmRunTests;
+namespace App\Jobs;
 
-use App\Events\NpmRunTests\NpmRunTestsEvent;
 use App\Models\ExecutionStep;
 use App\Models\Submission;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\Process\Process;
 
-class NpmRunTestsListener implements ShouldQueue
+class NpmRunTests implements ShouldQueue
 {
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    public $submission;
+    public $tempDir;
+    public $command;
     /**
-     * Create the event listener.
+     * Create a new job instance.
      */
-    public function __construct()
+    public function __construct($submission, $tempDir, $command)
     {
-        //
+        $this->submission = $submission;
+        $this->tempDir = $tempDir;
+        $this->command = $command;
     }
 
     /**
-     * Handle the event.
+     * Execute the job.
      */
-    public function handle(NpmRunTestsEvent $event): void
+    public function handle(): void
     {
-        $submission = $event->submission;
-        Log::info("NPM running tests in folder {$event->tempDir}");
+        $submission = $this->submission;
+        Log::info("NPM running tests in folder {$this->tempDir}");
         $this->updateSubmissionStatus($submission, Submission::$PROCESSING, "NPM running tests");
         try {
             // processing
             $pass_all = false;
-            $commands = $event->command;
+            $commands = $this->command;
             foreach ($commands as  $command) {
                 $command_string = implode(" ", $command);
-                Log::info("Running {$command_string} in folder {$event->tempDir}");
+                Log::info("Running {$command_string} in folder {$this->tempDir}");
                 $this->updateSubmissionTestsResultsStatus($command_string, $submission, Submission::$PROCESSING, "Running");
                 usleep(100000);
-                $process = new Process($command, $event->tempDir, null, null, 120);
-                $process->run();
+                $process = new Process($command, $this->tempDir, null, null, 120);
+                $process->start();
+                $process_pid = $process->getPid();
+                $process->wait();
                 if ($process->isSuccessful()) {
                     $pass_all = true;
-                    Log::info("{$command_string} in folder {$event->tempDir}");
+                    Log::info("{$command_string} in folder {$this->tempDir}");
                     $this->updateSubmissionTestsResultsStatus($command_string, $submission, Submission::$COMPLETED, $process->getOutput());
                 } else {
                     $pass_all = false;
                     Log::error("Failed to NPM run test {$command_string}"   . $process->getErrorOutput());
                     $this->updateSubmissionTestsResultsStatus($command_string, $submission, Submission::$FAILED, $process->getErrorOutput());
+                    Process::fromShellCommandline('kill ' . $process_pid)->run();
                 }
             }
             if ($pass_all) {
-                Log::info("NPM ran tests in folder {$event->tempDir}");
+                Log::info("NPM ran tests in folder {$this->tempDir}");
                 $this->updateSubmissionStatus($submission, Submission::$COMPLETED, "NPM tested");
             } else {
-                Log::info("NPM failed to run tests in folder {$event->tempDir}");
+                Log::info("NPM failed to run tests in folder {$this->tempDir}");
                 $this->updateSubmissionStatus($submission, Submission::$FAILED, "Failed to run NPM tests");
+                if ($submission->port) Process::fromShellCommandline("npx kill-port $submission->port")->run();
             }
         } catch (\Throwable $th) {
-            Log::error("Failed to NPM run tests in folder {$event->tempDir} " . $th->getMessage());
+            Log::error("Failed to NPM run tests in folder {$this->tempDir} " . $th->getMessage());
             $this->updateSubmissionStatus($submission, Submission::$FAILED, "Failed to NPM running tests");
-            Process::fromShellCommandline("rm -rf {$event->tempDir}")->run();
+            Process::fromShellCommandline("rm -rf {$this->tempDir}")->run();
         }
     }
 
