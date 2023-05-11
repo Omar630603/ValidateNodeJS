@@ -36,6 +36,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/', [SubmissionController::class, 'index'])->name('submissions');
         Route::get('/project/{project_id}', [SubmissionController::class, 'showAllSubmissionsBasedOnProject'])->name('submissions.showAll');
         Route::get('/submission/{submission_id}', [SubmissionController::class, 'show'])->name('submissions.show');
+        Route::get('/submission/history/{history_id}', [SubmissionController::class, 'history'])->name('submissions.history');
         Route::post('/process/submission/{submission_id}', [SubmissionController::class, 'process'])->name('submissions.process');
         Route::post('/refresh/submission/{submission_id}', [SubmissionController::class, 'refresh'])->name('submissions.refresh');
         Route::get('/status/submission/{submission_id}', [SubmissionController::class, 'status'])->name('submissions.status');

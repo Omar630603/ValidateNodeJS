@@ -80,7 +80,7 @@ class Submission extends Model implements HasMedia
         return $steps;
     }
 
-    public function initializeResults($increaseAttempts = false)
+    public function initializeResults()
     {
         $results = [];
         $steps = $this->getExecutionSteps();
@@ -117,13 +117,26 @@ class Submission extends Model implements HasMedia
                 ];
             }
         }
-        if ($increaseAttempts) $this->attempts = $this->attempts + 1;
         $this->updateResults($results);
+    }
+
+    public function increaseAttempts()
+    {
+        $this->attempts = $this->attempts + 1;
+        $this->save();
     }
 
     public function updateStatus($status)
     {
         $this->status = $status;
+        if ($status == self::$FAILED || self::$COMPLETED) $this->end = now();
+        $this->save();
+    }
+
+    public function restartTime()
+    {
+        $this->start    = now();
+        $this->end      = null;
         $this->save();
     }
 
@@ -195,6 +208,23 @@ class Submission extends Model implements HasMedia
         }
     }
 
+    public function getNextExecutionStep($step_id = null)
+    {
+        if ($step_id == null) return null;
+        $next_step = null;
+        $steps = $this->getExecutionSteps();
+        $current_step = $this->getCurrentExecutionStep($step_id);
+        if ($current_step) {
+            $current_step_index = $steps->search(function ($step) use ($current_step) {
+                return $step->id == $current_step->id;
+            });
+            if ($current_step_index < $steps->count()) {
+                $next_step = $steps[$current_step_index + 1];
+            }
+        }
+        return $next_step;
+    }
+
     public function getTotalSteps()
     {
         return $this->getExecutionSteps()->count();
@@ -212,5 +242,27 @@ class Submission extends Model implements HasMedia
             }
         }
         return $completed_steps;
+    }
+
+    public function restartAfterNpmInstall()
+    {
+        $step = ProjectExecutionStep::where('project_id', $this->project_id)->where('execution_step_id', ExecutionStep::where('name', ExecutionStep::$NPM_INSTALL)->first()->id)->first();
+        $next_step = $this->getNextExecutionStep($step->id ?? null);
+        // update results to pending
+        while ($next_step) {
+            if ($next_step->executionStep->name == ExecutionStep::$NPM_RUN_TESTS) {
+                $tests = $this->project->projectExecutionSteps->where('execution_step_id', $next_step->executionStep->id)->first()->variables;
+                foreach ($tests as $testCommandValue) {
+                    $command = implode(" ", $next_step->executionStep->commands);
+                    $key = explode("=", $testCommandValue)[0];
+                    $value = explode("=", $testCommandValue)[1];
+                    $testName = str_replace($key, $value, $command);
+                    $this->updateOneTestResult($next_step->executionStep->name, $testName, Submission::$PENDING, " ");
+                }
+            }
+            $this->updateOneResult($next_step->executionStep->name, Submission::$PENDING, " ");
+            $next_step = $this->getNextExecutionStep($next_step->id ?? null);
+        }
+        $this->updateStatus(Submission::$PROCESSING);
     }
 }

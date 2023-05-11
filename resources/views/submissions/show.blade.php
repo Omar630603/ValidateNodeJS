@@ -5,124 +5,229 @@
             {{ __('All submissions for project: ') . $project->title }}
         </h2>
     </x-slot>
-    @elseif(request()->routeIs('submissions.show'))
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-            {{ __('Submission NO#').$submission->id.__(' of Project: ') . $submission->project->title .__(' attempt NO#: ').$submission->attempts }}
-        </h2>
-    </x-slot>
 
     <div class="py-5">
-
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-8">
-                <div
-                    class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg md:col-span-1 md:row-span-1 md:rounded-md md:shadow-md md:py-1 md:px-3 lg:px-5 xl:px-7">
-                    <!-- content for the smaller column -->
-                    <div class="p-6 text-gray-900 dark:text-gray-100">
-                        <ol class="list-disc list-inside">
-                            <li class="list-none">
-                                <div class="flex justify-start gap-2">
-                                    <x-pending_icon class="w-[20px] h-[20px] pt-[0.10rem]" id="start_pending_icon"
-                                        svgWidth='20px' svgHeight='20px' />
-                                    <x-success_icon class="hidden w-[20px] h-[20px] pt-[0.10rem]"
-                                        id="start_success_icon" svgWidth='20px' svgHeight='20px' />
-                                    <x-failed_icon class="hidden w-[20px] h-[20px] pt-[0.10rem]" id="start_failed_icon"
-                                        svgWidth='20px' svgHeight='20px' />
-                                    <span class="text-gray-400 font-semiblid stepNames">Start</span>
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+                @php
+                $no = 0;
+                @endphp
+                @forelse ($submissions as $submission)
+                @php
+                $no += 1;
+                @endphp
+                <div class="relative overflow-x-auto">
+                    <div class="relative overflow-x-auto shadow-md sm:rounded-lg">
+                        <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                            <caption
+                                class="p-5 text-lg font-semibold text-left text-gray-900 bg-white dark:text-white dark:bg-gray-800">
+                                {{$submission->project->title}} - submission number #{{$no}}
+                                <p class="mt-1 text-sm font-normal text-gray-500 dark:text-gray-400">Here is the the
+                                    list of attempts for this submission</p>
+                            </caption>
+                            <thead
+                                class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3">Attempt NO#</th>
+                                    <th scope="col" class="px-6 py-3">Status</th>
+                                    <th scope="col" class="px-6 py-3">Time Spent</th>
+                                    <th scope="col" class="px-6 py-3"><span class="sr-only">Edit</span></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse ($submission_history as $history)
+                                @if ($history->submission_id === $submission->id)
+                                <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                                    <th scope="row"
+                                        class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
+                                        {{$history->attempts}}
+                                    </th>
+                                    <th scope="row"
+                                        class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
+                                        {{$history->status}}
+                                    </th>
+                                    <th scope="row"
+                                        class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
+                                        @php
+                                        $history_start = Carbon\Carbon::parse($history->start);
+                                        $history_end = Carbon\Carbon::parse($history->end ?? now());
+                                        $history_time = $history_end->diff($history_start)->format('%H:%I:%S');
+                                        @endphp
+                                        {{$history_time}}
+                                    </th>
+                                    <td class="px-6 py-4 text-right">
+                                        <a href="/submissions/submission/history/{{ $history->id }}"
+                                            class="font-medium text-blue-600 dark:text-blue-500 hover:underline">View</a>
+                                    </td>
+                                </tr>
+                                @else
+                                @endif
+                                @empty
+                                <div class="p-5">
+                                    <x-not-found message="No Attempts Found" />
                                 </div>
-                            </li>
-                            @forelse ($steps as $step)
-                            <li class="list-none">
-                                <div class="flex justify-start gap-2">
-                                    <x-pending_icon class="w-[20px] h-[20px] pt-[0.10rem]"
-                                        id="{{$step->id}}_pending_icon" svgWidth='20px' svgHeight='20px' />
-                                    <x-success_icon class="hidden w-[20px] h-[20px] pt-[0.10rem]"
-                                        id="{{$step->id}}_success_icon" svgWidth='20px' svgHeight='20px' />
-                                    <x-failed_icon class="hidden w-[20px] h-[20px] pt-[0.10rem]"
-                                        id="{{$step->id}}_failed_icon" svgWidth='20px' svgHeight='20px' />
-                                    <span
-                                        class="text-gray-400 font-semiblid stepNames">{{$step->executionStep->name}}</span>
-                                </div>
-                            </li>
-                            @if ($step->executionStep->name == 'NPM Run Tests')
-                            @forelse ($step->variables as $testCommandValue)
-                            @php
-                            $command = implode(" ",$step->executionStep->commands);
-                            $key = explode("=",$testCommandValue)[0];
-                            $value = explode("=",$testCommandValue)[1];
-                            $testStep = str_replace($key, $value, $command);
-                            $iconID = str_replace(" ", "_", $testStep);
-                            @endphp
-                            <li class="list-none pl-5">
-                                <div class="flex justify-start gap-2">
-                                    <x-pending_icon class="w-[20px] h-[20px] pt-[0.10rem]"
-                                        id="{{$step->id}}_pending_icon_{{$iconID}}" svgWidth='20px' svgHeight='20px' />
-                                    <x-success_icon class="hidden w-[20px] h-[20px] pt-[0.10rem]"
-                                        id="{{$step->id}}_success_icon_{{$iconID}}" svgWidth='20px' svgHeight='20px' />
-                                    <x-failed_icon class="hidden w-[20px] h-[20px] pt-[0.10rem]"
-                                        id="{{$step->id}}_failed_icon_{{$iconID}}" svgWidth='20px' svgHeight='20px' />
-                                    <span class="text-gray-400 font-semiblid stepTestNames">{{$testStep}}</span>
-                                </div>
-                            </li>
-                            @empty
-                            <x-not-found message="No Tests Found" />
-                            @endforelse
-                            @endif
-                            @empty
-                            <x-not-found message="No Steps Found" />
-                            @endforelse
-                            <li class="list-none">
-                                <div class="flex justify-start gap-2">
-                                    <x-pending_icon class="w-[20px] h-[20px] pt-[0.10rem]" id="done_pending_icon"
-                                        svgWidth='20px' svgHeight='20px' />
-                                    <x-success_icon class="hidden w-[20px] h-[20px] pt-[0.10rem]" id="done_success_icon"
-                                        svgWidth='20px' svgHeight='20px' />
-                                    <x-failed_icon class="hidden w-[20px] h-[20px] pt-[0.10rem]" id="done_failed_icon"
-                                        svgWidth='20px' svgHeight='20px' />
-                                    <span class="text-gray-400 font-semiblid stepNames">Done</span>
-                                </div>
-                            </li>
-                        </ol>
+                                @endforelse
+                                <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                                    <th scope="row"
+                                        class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white text-center">
+                                        Current Submission
+                                    </th>
+                                </tr>
+                                <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                                    <th scope="row"
+                                        class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
+                                        {{$submission->attempts}}
+                                    </th>
+                                    <th scope="row"
+                                        class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
+                                        {{$submission->status}}
+                                    </th>
+                                    <th scope="row"
+                                        class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
+                                        {{-- get the difference between start and end time from submission using carbon and if end is null then use current time --}}
+                                        @php
+                                        $start = Carbon\Carbon::parse($submission->start);
+                                        $end = Carbon\Carbon::parse($submission->end ?? now());
+                                        $time = $end->diff($start)->format('%H:%I:%S');
+                                        @endphp
+                                        {{$time}}
+                                    </th>
+                                    <td class="px-6 py-4 text-right">
+                                        <a href="/submissions/submission/{{ $submission->id }}"
+                                            class="font-medium text-blue-600 dark:text-blue-500 hover:underline">View</a>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
+                    @empty
+                    <div class="p-5">
+                        <x-not-found message="No Submissions Found" />
+                    </div>
+                    @endforelse
                 </div>
-                <div
-                    class="bg-gray-200 dark:bg-gray-900 border-secondary border-2 overflow-hidden shadow-sm sm:rounded-lg md:col-span-2 md:row-span-1 md:rounded-md md:shadow-md md:py-6 md:px-8 lg:px-12 xl:px-16">
-                    <!-- content for the bigger column -->
+            </div>
+        </div>
+        @elseif(request()->routeIs('submissions.show') || request()->routeIs('submissions.history'))
+        <x-slot name="header">
+            <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
+                {{ __('Submission NO#').$submission->id.__(' of Project: ') . $submission->project->title .__(' attempt NO#: ').$submission->attempts }}
+            </h2>
+        </x-slot>
 
-                    <div class="m-5 w-100 bg-gray-600 sm:rounded-lg md:rounded-md" id="progress">
-                        <div class="text-center w-[1%] h-5 bg-secondary text-white sm:rounded-lg md:rounded-md text-sm"
-                            id="bar">0%</div>
+        <div class="py-5">
+            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+                <div class="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-8">
+                    <div
+                        class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg md:col-span-1 md:row-span-1 md:rounded-md md:shadow-md md:py-1 md:px-3 lg:px-5 xl:px-7">
+                        <!-- content for the smaller column -->
+                        <div class="p-6 text-gray-900 dark:text-gray-100">
+                            <ol class="list-disc list-inside">
+                                <li class="list-none">
+                                    <div class="flex justify-start gap-2">
+                                        <x-pending_icon class="w-[20px] h-[20px] pt-[0.10rem]" id="start_pending_icon"
+                                            svgWidth='20px' svgHeight='20px' />
+                                        <x-success_icon class="hidden w-[20px] h-[20px] pt-[0.10rem]"
+                                            id="start_success_icon" svgWidth='20px' svgHeight='20px' />
+                                        <x-failed_icon class="hidden w-[20px] h-[20px] pt-[0.10rem]"
+                                            id="start_failed_icon" svgWidth='20px' svgHeight='20px' />
+                                        <span class="text-gray-400 font-semiblid stepNames">Start</span>
+                                    </div>
+                                </li>
+                                @forelse ($steps as $step)
+                                <li class="list-none">
+                                    <div class="flex justify-start gap-2">
+                                        <x-pending_icon class="w-[20px] h-[20px] pt-[0.10rem]"
+                                            id="{{$step->id}}_pending_icon" svgWidth='20px' svgHeight='20px' />
+                                        <x-success_icon class="hidden w-[20px] h-[20px] pt-[0.10rem]"
+                                            id="{{$step->id}}_success_icon" svgWidth='20px' svgHeight='20px' />
+                                        <x-failed_icon class="hidden w-[20px] h-[20px] pt-[0.10rem]"
+                                            id="{{$step->id}}_failed_icon" svgWidth='20px' svgHeight='20px' />
+                                        <span
+                                            class="text-gray-400 font-semiblid stepNames">{{$step->executionStep->name}}</span>
+                                    </div>
+                                </li>
+                                @if ($step->executionStep->name == 'NPM Run Tests')
+                                @forelse ($step->variables as $testCommandValue)
+                                @php
+                                $command = implode(" ",$step->executionStep->commands);
+                                $key = explode("=",$testCommandValue)[0];
+                                $value = explode("=",$testCommandValue)[1];
+                                $testStep = str_replace($key, $value, $command);
+                                $iconID = str_replace(" ", "_", $testStep);
+                                @endphp
+                                <li class="list-none pl-5">
+                                    <div class="flex justify-start gap-2">
+                                        <x-pending_icon class="w-[20px] h-[20px] pt-[0.10rem]"
+                                            id="{{$step->id}}_pending_icon_{{$iconID}}" svgWidth='20px'
+                                            svgHeight='20px' />
+                                        <x-success_icon class="hidden w-[20px] h-[20px] pt-[0.10rem]"
+                                            id="{{$step->id}}_success_icon_{{$iconID}}" svgWidth='20px'
+                                            svgHeight='20px' />
+                                        <x-failed_icon class="hidden w-[20px] h-[20px] pt-[0.10rem]"
+                                            id="{{$step->id}}_failed_icon_{{$iconID}}" svgWidth='20px'
+                                            svgHeight='20px' />
+                                        <span class="text-gray-400 font-semiblid stepTestNames">{{$testStep}}</span>
+                                    </div>
+                                </li>
+                                @empty
+                                <x-not-found message="No Tests Found" />
+                                @endforelse
+                                @endif
+                                @empty
+                                <x-not-found message="No Steps Found" />
+                                @endforelse
+                                <li class="list-none">
+                                    <div class="flex justify-start gap-2">
+                                        <x-pending_icon class="w-[20px] h-[20px] pt-[0.10rem]" id="done_pending_icon"
+                                            svgWidth='20px' svgHeight='20px' />
+                                        <x-success_icon class="hidden w-[20px] h-[20px] pt-[0.10rem]"
+                                            id="done_success_icon" svgWidth='20px' svgHeight='20px' />
+                                        <x-failed_icon class="hidden w-[20px] h-[20px] pt-[0.10rem]"
+                                            id="done_failed_icon" svgWidth='20px' svgHeight='20px' />
+                                        <span class="text-gray-400 font-semiblid stepNames">Done</span>
+                                    </div>
+                                </li>
+                            </ol>
+                        </div>
                     </div>
-                    <div id="loader"
-                        class="mx-5 mt-1 float-right hidden h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] text-secondary motion-reduce:animate-[spin_1.5s_linear_infinite]"
-                        role="status">
-                        <span
-                            class="!absolute !-m-px !h-px !w-px !overflow-hidden !whitespace-nowrap !border-0 !p-0 ![clip:rect(0,0,0,0)]">Loading...</span>
-                    </div>
-                    <div id="refresh"
-                        class="hidden float-right cursor-pointer mx-5 mt-1 motion-reduce:animate-[spin_1.5s_linear_infinite]">
-                        <x-refresh_icon class="h-8 w-8" svgWidth='2rem' svgHeight='2rem' />
-                    </div>
-                    <div class="mx-5">
-                        <p class="text-white text-xl" id="submission_message"></p>
-                        <p class="text-white text-xl" id="submission_status"></p>
-                    </div>
-                    <div class="p-6 text-gray-900 dark:text-gray-100">
-                        <div class="text-white mt-5" id="submission_results">
-                            Waitting for the submission to progress...
+                    <div
+                        class="bg-gray-200 dark:bg-gray-900 border-secondary border-2 overflow-hidden shadow-sm sm:rounded-lg md:col-span-2 md:row-span-1 md:rounded-md md:shadow-md md:py-6 md:px-8 lg:px-12 xl:px-16">
+                        <!-- content for the bigger column -->
+
+                        <div class="m-5 w-100 bg-gray-600 sm:rounded-lg md:rounded-md" id="progress">
+                            <div class="text-center w-[1%] h-5 bg-secondary text-white sm:rounded-lg md:rounded-md text-sm"
+                                id="bar">0%</div>
+                        </div>
+                        <div id="loader"
+                            class="mx-5 mt-1 float-right hidden h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] text-secondary motion-reduce:animate-[spin_1.5s_linear_infinite]"
+                            role="status">
+                            <span
+                                class="!absolute !-m-px !h-px !w-px !overflow-hidden !whitespace-nowrap !border-0 !p-0 ![clip:rect(0,0,0,0)]">Loading...</span>
+                        </div>
+                        <div id="refresh"
+                            class="hidden float-right cursor-pointer mx-5 mt-1 motion-reduce:animate-[spin_1.5s_linear_infinite]">
+                            <x-refresh_icon class="h-8 w-8" svgWidth='2rem' svgHeight='2rem' />
+                        </div>
+                        <div class="mx-5">
+                            <p class="text-white text-xl" id="submission_message"></p>
+                            <p class="text-white text-xl" id="submission_status"></p>
+                        </div>
+                        <div class="p-6 text-gray-900 dark:text-gray-100">
+                            <div class="text-white mt-5" id="submission_results">
+                                Waitting for the submission to progress...
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
 
 
 
-    @section('scripts')
-    <script>
-        $(document).ready(function () {
+        @section('scripts')
+        <script>
+            $(document).ready(function () {
             // Left side steps
             const startElement = $(`.stepNames:contains(Start)`).closest('li');
             const stepNames = $('.stepNames');
@@ -146,6 +251,9 @@
                 message: 'Submission is pending',
                 results: {}
             };
+            // the history page
+            let isNotHistory =  `{{!request()->routeIs('submissions.history')}}`;
+            isNotHistory = isNotHistory == 1 ? true : false;
             // variable for checking if all the steps are completed
             let checkResponse = false;
             // animate the progess bar
@@ -170,14 +278,26 @@
                         headers: {
                             'X-CSRF-TOKEN': '{{ csrf_token() }}'
                         },
+                        data: {
+                            isNotHistory: isNotHistory,
+                        },
                         success: function (response) {
-                            checkSubmissionProgress();
                             if (response.status === 'processing' || response.status === 'pending') {
+                                checkSubmissionProgress();
                                 if (response.step !== null) {   
                                     setTimeout(() => {
                                         window.requestAnimationFrame(getSubmissionStatus);
-                                    }, 2000);
+                                    }, 2000);                                }
+                            }else{
+                                if (response.status === 'failed') {
+                                // failed status
+                                    updateUIFailedStatus(response);
+                                } else if (response.status === 'completed') {
+                                // completed status
+                                    loaderElement.addClass('hidden');
+                                    updateUICompletedStatus(response);
                                 }
+                                updateUI(response);
                             }
                         },
                     })
@@ -199,9 +319,12 @@
                         method: 'POST',
                         headers: {
                             'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                        }
+                        },
+                        data: {
+                            isNotHistory: isNotHistory,
+                        },
                     });
-                    console.log(response);
+
                     checkResponse = JSON.stringify(old_response) === JSON.stringify(response);
                     if (!checkResponse) {
                         updateUI(response);
@@ -231,7 +354,7 @@
                     // check the status of the submission
                     // processing status
                     if (response.status === 'processing') {
-                        if (response.next_step?.id !== undefined) {
+                        if (response.next_step?.id !== undefined && isNotHistory) {
                             // the submission is still processing
                             loaderElement.removeClass('hidden');
                         } else {
@@ -274,18 +397,18 @@
                 barElement.removeClass('bg-secondary');
                 barElement.addClass('bg-red-400');
                 // show the refresh button
-                refreshElement.removeClass('hidden');
-                if (allowedToRefresh){
-                    refreshElement.click(function(){
-                        // prevent the user from clicking the button multiple times
-                        allowedToRefresh = false;
-                        // update the submission results and progress bar
-                        move(0, 0);
-                        submission_message.text("Submssion Message: Restarting");
-                        submission_status.text("Submssion Status: Restarting...");
-                        // request the server to refresh the submission
-                        requestRefresh();
-                    });
+                if(isNotHistory){
+                    refreshElement.removeClass('hidden');
+                    if (allowedToRefresh){
+                        refreshElement.click(function(){
+                            // update the submission results and progress bar
+                            move(0, 0);
+                            submission_message.text("Submssion Message: Restarting");
+                            submission_status.text("Submssion Status: Restarting...");
+                            // request the server to refresh the submission
+                            requestRefresh();
+                        });
+                    }
                 }
                 // update the submission results last element
                 const submission_results_done = $('#submission_results_done');
@@ -302,22 +425,27 @@
                 refreshElement.addClass('animate-spin');
                 refreshElement.removeClass('cursor-pointer');
                 try {
-                    const response = await $.ajax({
-                        url: '/submissions/refresh/submission/{{ $submission->id }}',
-                        method: 'POST',
-                        headers: {
-                            'X-CSRF-TOKEN': '{{ csrf_token()}}'
-                        }
-                    });
-                    // update the UI with the response
-                    // refresh the page after 5 seconds
-                    setTimeout(() => {
-                        refreshElement.removeClass('animate-spin');
-                        refreshElement.addClass('hidden');
-                        barElement.removeClass('bg-red-400');
-                        barElement.addClass('bg-secondary');
-                        window.location.reload();
-                    }, 5000);
+                    if (allowedToRefresh) {
+                        // prevent the user from clicking the button multiple times
+                        allowedToRefresh = false;
+                        const response = await $.ajax({
+                            url: '/submissions/refresh/submission/{{ $submission->id }}',
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': '{{ csrf_token()}}'
+                            }
+                        });
+                        // update the UI with the response
+                        // refresh the page after 5 seconds
+                        setTimeout(() => {
+                            refreshElement.removeClass('animate-spin');
+                            refreshElement.addClass('hidden');
+                            barElement.removeClass('bg-red-400');
+                            barElement.addClass('bg-secondary');
+                            window.location.reload();
+                        }, 5000);
+                    }
+
                 } catch (error) {
                     console.log(error);
                     const error_response = {
@@ -476,7 +604,7 @@
                 }
             }
         });
-    </script>
-    @endsection
-    @endif
+        </script>
+        @endsection
+        @endif
 </x-app-layout>

@@ -21,6 +21,8 @@ return new class extends Migration
             $table->enum('status', ['pending', 'processing', 'completed', 'failed']);
             $table->json('results')->nullable()->comment('The results of the submission');
             $table->integer('attempts');
+            $table->timestamp('start')->nullable();
+            $table->timestamp('end')->nullable();
             $table->integer('port')->nullable()->comment('The port number of the submission');
             $table->timestamps();
         });

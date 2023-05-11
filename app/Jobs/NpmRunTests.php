@@ -57,7 +57,7 @@ class NpmRunTests implements ShouldQueue
                     $this->updateSubmissionTestsResultsStatus($command_string, $submission, Submission::$COMPLETED, $process->getOutput());
                 } else {
                     $pass_all = false;
-                    Log::error("Failed to NPM run test {$command_string}"   . $process->getErrorOutput());
+                    Log::error("Failed to NPM run test {$command_string} "   . $process->getErrorOutput());
                     $this->updateSubmissionTestsResultsStatus($command_string, $submission, Submission::$FAILED, $process->getErrorOutput());
                     Process::fromShellCommandline('kill ' . $process_pid)->run();
                 }

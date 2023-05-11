@@ -11,9 +11,10 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
+use Symfony\Component\Process\Exception\ProcessTimedOutException;
 use Symfony\Component\Process\Process;
 
-class NpmRunStart implements ShouldQueue
+class NpmRunStart
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -57,37 +58,28 @@ class NpmRunStart implements ShouldQueue
         }
 
         // Run NPM start command
-        $output = "";
         try {
-            // processing
             $process = new Process($command, $tempDir, null, null, null);
             $process->start();
-            $process_pid = $process->getPid();
+            $process->waitUntil(function ($type, $output) use ($port) {
+                return strpos($output, "Server started on port $port") !== false || strpos($output, "MongoNetworkError") !== false;
+            }, 60000); // Wait for 60 seconds
 
-            $fail = true;
-            $timeout = 60; // in seconds
-            $startTime = time();
-            while (time() - $startTime < $timeout) {
-                $output = $process->getOutput();
-                if (strpos($output, "Server started on port $port") !== false) {
-                    log::info("NPM run start is completed in folder {$tempDir} the application is running on port $port");
-                    $this->updateSubmissionStatus($submission, Submission::$COMPLETED, $output);
-                    $fail = false;
-                    $submission->updatePort($port);
-                    $process->wait();
-                    break;
-                }
-                usleep(100000); // wait for 100ms before checking the output again
-            }
-            // timeout reached, kill the process and update the submission status
-            if ($fail) {
-                $process->stop();
-                Log::error("Failed to NPM run start in folder {$tempDir} due to timeout " . $process->getErrorOutput());
-                $this->updateSubmissionStatus($submission, Submission::$FAILED, "Failed to start application on port $port due to timeout");
+            if (strpos($process->getOutput(), "Server started on port $port") !== false) {
+                Log::info("NPM run start is completed in folder {$tempDir} the application is running on port $port");
+                $this->updateSubmissionStatus($submission, Submission::$COMPLETED, $process->getOutput());
+                $submission->updatePort($port);
+                $process->wait();
+            } else {
+                Log::error("Failed to NPM run start in folder {$tempDir} due to error " .  $process->getOutput());
+                $this->updateSubmissionStatus($submission, Submission::$FAILED, "Failed to start application on port $port");
                 Process::fromShellCommandline("npx kill-port $port")->run();
-                Process::fromShellCommandline('kill ' . $process_pid)->run();
-                throw new \Exception($process->getErrorOutput());
             }
+        } catch (ProcessTimedOutException $th) {
+            $process->stop();
+            Log::error("Failed to NPM run start in folder {$tempDir} due to timeout " .  $process->getOutput());
+            $this->updateSubmissionStatus($submission, Submission::$FAILED, "Failed to start application on port $port due to timeout");
+            Process::fromShellCommandline("npx kill-port $port")->run();
         } catch (\Throwable $th) {
             Log::error("Failed to NPM run start in folder {$tempDir}" . $th->getMessage());
             $this->updateSubmissionStatus($submission, Submission::$FAILED, "Failed to start application on port $port");

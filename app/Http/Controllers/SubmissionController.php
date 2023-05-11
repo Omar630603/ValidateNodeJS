@@ -14,19 +14,63 @@ use App\Jobs\ReplacePackageJson;
 use App\Jobs\UnzipZipFiles;
 use App\Models\ExecutionStep;
 use App\Models\Project;
+use App\Models\ProjectExecutionStep;
 use App\Models\Submission;
 use App\Models\SubmissionHistory;
 use App\Models\TemporaryFile;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Symfony\Component\Process\Process;
+use Yajra\DataTables\Facades\DataTables;
 
 class SubmissionController extends Controller
 {
     public function index(Request $request)
     {
-        return view('submissions.index');
+        // $step = ProjectExecutionStep::find(9);
+        // $tempDir = $this->getTempDir($submission);
+
+        // $commands = $step->executionStep->commands;
+        // dispatch(new NpmRunStart($submission, $tempDir, $commands));
+
+        // $commands = [];
+        // $tests = $submission->project->projectExecutionSteps->where('execution_step_id', $step->executionStep->id)->first()->variables;
+        // foreach ($tests as $testCommandValue) {
+        //     $command = implode(" ", $step->executionStep->commands);
+        //     $key = explode("=", $testCommandValue)[0];
+        //     $value = explode("=", $testCommandValue)[1];
+        //     $testName = str_replace($key, $value, $command);
+        //     array_push($commands, explode(" ", $testName));
+        // }
+        // dispatch(new NpmRunTests($submission, $tempDir, $commands));
+
+        $user = $request->user();
+        $projects = Project::skip(0)->take(3)->get();
+        if ($request->ajax()) {
+            $data = DB::table('projects')
+                ->select('projects.id', 'projects.title', DB::raw('COUNT(submissions.id) as submission_count'))
+                ->leftJoin('submissions', function ($join) use ($user) {
+                    $join->on('projects.id', '=', 'submissions.project_id')
+                        ->where('submissions.user_id', '=', $user->id);
+                })
+                ->groupBy('projects.id');
+
+
+            return DataTables::of($data)
+                ->addIndexColumn()
+                ->addColumn('title', function ($row) {
+                    $title_button = '<a href="/submissions/project/' . $row->id . '" class="underline text-secondary">' . $row->title . '</a>';
+                    return $title_button;
+                })
+                ->rawColumns(['title'])
+                ->make(true);
+        }
+        return view('submissions.index', compact('projects'));
     }
+
+
 
     public function upload(Request $request, $project_id)
     {
@@ -80,6 +124,7 @@ class SubmissionController extends Controller
                 $submission->path = $request->github_url;
             }
             $submission->status = Submission::$PENDING;
+            $submission->start = now();
             $submission->save();
 
 
@@ -100,10 +145,12 @@ class SubmissionController extends Controller
         $project = Project::find($project_id);
         $submissions = Submission::where('project_id', $project_id)
             ->where('user_id', $request->user()->id)->get();
+        $submission_history = SubmissionHistory::whereIn('submission_id', $submissions->pluck('id')->toArray())->get();
+
         if (!$project) {
             return redirect()->route('submissions');
         }
-        return view('submissions.show', compact('project', 'submissions'));
+        return view('submissions.show', compact('project', 'submissions', 'submission_history'));
     }
 
     public function show(Request $request, $submission_id)
@@ -111,42 +158,78 @@ class SubmissionController extends Controller
         $submission = Submission::find($submission_id);
         if ($submission) {
             $steps = $submission->getExecutionSteps();
-            $currentStep = $submission->getCurrentExecutionStep();
-            return view('submissions.show', compact('submission', 'steps', 'currentStep'));
+            return view('submissions.show', compact('submission', 'steps'));
+        }
+        return redirect()->route('submissions');
+    }
+
+    public function history(Request $request, $history_id)
+    {
+        $submission = SubmissionHistory::find($history_id);
+        if ($submission) {
+            $steps = $submission->getExecutionSteps();
+            return view('submissions.show', compact('submission', 'steps'));
         }
         return redirect()->route('submissions');
     }
 
     public function status(Request $request, $submission_id)
     {
-        $submission = Submission::find($submission_id);
+        $isNotHistory = filter_var($request->isNotHistory, FILTER_VALIDATE_BOOLEAN);
+        $submission = $isNotHistory ?  Submission::find($submission_id) : SubmissionHistory::find($submission_id);
         if (!$submission) {
             return response()->json([
                 'message' => 'Submission not found',
             ], 404);
         }
-        return response()->json([
-            'status' => $submission->status,
-            'step' => $submission->getCurrentExecutionStep(),
-        ], 200);
+        $completion_percentage = round($submission->getTotalCompletedSteps() / $submission->getTotalSteps() * 100);
+        if ($submission->status === Submission::$PENDING) {
+            return $this->returnSubmissionResponse(($isNotHistory ? "Submission is processing"  : "History"), $submission->status, $submission->results, $currentStep ?? null, $completion_percentage);
+        } else if ($submission->status === Submission::$FAILED) {
+            return $this->returnSubmissionResponse(($isNotHistory ?   "Submission has failed" : "History"), $submission->status, $submission->results, null, $completion_percentage);
+        } else if ($submission->status === Submission::$COMPLETED) {
+            return $this->returnSubmissionResponse(($isNotHistory ?  "Submission has completed" : "History"), $submission->status, $submission->results, null, $completion_percentage);
+        } else if ($submission->status === Submission::$PROCESSING) {
+            $step = $isNotHistory ? $submission->getCurrentExecutionStep() : null;
+            if ($step) {
+                return $this->returnSubmissionResponse(
+                    $isNotHistory ?  'Step ' . $step->executionStep->name . ' is ' . $submission->results->{$step->executionStep->name}->status : "History",
+                    $submission->status,
+                    $submission->results,
+                    $step,
+                    $completion_percentage
+                );
+            }
+            return $this->returnSubmissionResponse(
+                ($isNotHistory ?  'Submission is processing meanwhile there is no step to execute' : "History"),
+                $submission->status,
+                $submission->results,
+                $step,
+                $completion_percentage
+            );
+        }
     }
 
     public function process(Request $request, $submission_id)
     {
-        $submission = Submission::find($submission_id);
+        $isNotHistory = filter_var($request->isNotHistory, FILTER_VALIDATE_BOOLEAN);
+        $submission = $isNotHistory ?  Submission::find($submission_id) : SubmissionHistory::find($submission_id);
+
         if ($submission) {
             $completion_percentage = round($submission->getTotalCompletedSteps() / $submission->getTotalSteps() * 100);
             if ($submission->status === Submission::$PENDING) {
-                $submission->initializeResults();
-                $submission->updateStatus(Submission::$PROCESSING);
-                $currentStep = $submission->getCurrentExecutionStep();
-                return $this->returnSubmissionResponse("Submission is processing", $submission->status, $submission->results, $currentStep, $completion_percentage);
+                if ($isNotHistory) {
+                    $submission->initializeResults();
+                    $submission->updateStatus(Submission::$PROCESSING);
+                    $currentStep = $submission->getCurrentExecutionStep();
+                }
+                return $this->returnSubmissionResponse(($isNotHistory ? "Submission is processing"  : "History"), $submission->status, $submission->results, $currentStep ?? null, $completion_percentage);
             } else if ($submission->status === Submission::$COMPLETED) {
-                return $this->returnSubmissionResponse("Submission has completed", $submission->status, $submission->results, null, $completion_percentage);
+                return $this->returnSubmissionResponse(($isNotHistory ?  "Submission has completed" : "History"), $submission->status, $submission->results, null, $completion_percentage);
             } else if ($submission->status === Submission::$FAILED) {
-                return $this->returnSubmissionResponse("Submission has failed", $submission->status, $submission->results, null, $completion_percentage);
+                return $this->returnSubmissionResponse(($isNotHistory ?   "Submission has failed" : "History"), $submission->status, $submission->results, null, $completion_percentage);
             } else if ($submission->status === Submission::$PROCESSING) {
-                $step = $submission->getCurrentExecutionStep();
+                $step = $isNotHistory ? $submission->getCurrentExecutionStep() : null;
                 if ($step) {
                     if ($submission->results->{$step->executionStep->name}->status == Submission::$PENDING) {
                         $submission->updateOneResult($step->executionStep->name, Submission::$PROCESSING, " ");
@@ -189,7 +272,7 @@ class SubmissionController extends Controller
                         }
                     }
                     return $this->returnSubmissionResponse(
-                        'Step ' . $step->executionStep->name . ' is ' . $submission->results->{$step->executionStep->name}->status,
+                        $isNotHistory ?  'Step ' . $step->executionStep->name . ' is ' . $submission->results->{$step->executionStep->name}->status : "History",
                         $submission->status,
                         $submission->results,
                         $step,
@@ -197,7 +280,7 @@ class SubmissionController extends Controller
                     );
                 }
                 return $this->returnSubmissionResponse(
-                    'Submission is processing meanwhile there is no step to execute',
+                    ($isNotHistory ?  'Submission is processing meanwhile there is no step to execute' : "History"),
                     $submission->status,
                     $submission->results,
                     $step,
@@ -225,31 +308,6 @@ class SubmissionController extends Controller
     {
         $submission = Submission::find($submission_id);
         if ($submission and $submission->status === Submission::$FAILED) {
-            $commands = [];
-            if ($submission->port != null) {
-                $commands = [
-                    ['npx', 'kill-port', $submission->port],
-                    ['rm', '-rf', $this->getTempDir($submission)],
-                ];
-            } else {
-                $commands = [
-                    ['rm', '-rf', $this->getTempDir($submission)],
-                ];
-            }
-            // Delete temp directory
-            foreach ($commands as $command) {
-                $process = new Process($command, null, null, null, 120);
-                $process->run();
-                if ($process->isSuccessful()) {
-                    Log::info('Command ' . implode(" ", $command) . ' is successful');
-                } else {
-                    Log::error('Command ' . implode(" ", $command) . ' has failed '   . $process->getErrorOutput());
-                }
-            }
-            // Update submission status
-            $submission->updateStatus(Submission::$PENDING);
-            $current_attempt = $submission->attempts;
-            $submission->initializeResults(true);
             // Create submission history
             $submission_history                 = new SubmissionHistory();
             $submission_history->submission_id  = $submission->id;
@@ -259,10 +317,47 @@ class SubmissionController extends Controller
             $submission_history->path           = $submission->path;
             $submission_history->status         = $submission->status;
             $submission_history->results        = $submission->results;
-            $submission_history->attempts       = $current_attempt;
+            $submission_history->attempts       = $submission->attempts;
+            $submission_history->start          = $submission->start;
+            $submission_history->end            = $submission->end;
             $submission_history->port           = $submission->port;
             $submission_history->save();
+
+            // if npm is installed
+            if ($submission->results->{ExecutionStep::$NPM_INSTALL}->status == Submission::$COMPLETED and !$this->is_dir_empty($this->getTempDir($submission))) {
+                $submission->restartAfterNpmInstall();
+                if ($submission->port != null) Process::fromShellCommandline('npx kill-port ' . $submission->port, null, null, null, 120)->run();
+            } else {
+                $commands = [];
+                if ($submission->port != null) {
+                    $commands = [
+                        ['npx', 'kill-port', $submission->port],
+                        ['rm', '-rf', $this->getTempDir($submission)],
+                    ];
+                } else {
+                    $commands = [
+                        ['rm', '-rf', $this->getTempDir($submission)],
+                    ];
+                }
+                // Delete temp directory
+                foreach ($commands as $command) {
+                    $process = new Process($command, null, null, null, 120);
+                    $process->run();
+                    if ($process->isSuccessful()) {
+                        Log::info('Command ' . implode(" ", $command) . ' is successful');
+                    } else {
+                        Log::error('Command ' . implode(" ", $command) . ' has failed '   . $process->getErrorOutput());
+                    }
+                }
+
+                $submission->initializeResults();
+                $submission->updateStatus(Submission::$PENDING);
+            }
+
+            // Update submission status
+            $submission->increaseAttempts();
             $submission->updatePort(null);
+            $submission->restartTime();
             // Return response
             return response()->json([
                 'message' => 'Submission has been refreshed',
@@ -281,8 +376,15 @@ class SubmissionController extends Controller
 
     private function is_dir_empty($dir)
     {
-        if (!is_readable($dir)) return null;
-        return (count(scandir($dir)) == 2);
+        $handle = opendir($dir);
+        while (false !== ($entry = readdir($handle))) {
+            if ($entry != "." && $entry != "..") {
+                closedir($handle);
+                return false;
+            }
+        }
+        closedir($handle);
+        return true;
     }
 
     private function replaceCommandArraysWithValues($step_variables, $values, $step)
@@ -385,7 +487,7 @@ class SubmissionController extends Controller
     private function lunchNpmRunStartJob($submission, $tempDir, $step)
     {
         $commands = $step->executionStep->commands;
-        dispatch(new NpmRunStart($submission, $tempDir, $commands));
+        dispatch_sync(new NpmRunStart($submission, $tempDir, $commands));
     }
 
     private function lunchNpmRunTestsJob($submission, $tempDir, $step)
@@ -399,12 +501,18 @@ class SubmissionController extends Controller
             $testName = str_replace($key, $value, $command);
             array_push($commands, explode(" ", $testName));
         }
-        dispatch(new NpmRunTests($submission, $tempDir, $commands));
+        dispatch_sync(new NpmRunTests($submission, $tempDir, $commands));
     }
 
     private function lunchDeleteTempDirectoryJob($submission, $tempDir, $step, $commands = null)
     {
-        if ($commands == null) $commands = [$step->executionStep->commands];
+        if ($commands == null) {
+            $commands = $step->executionStep->commands;
+            $step_variables = $step->variables;
+            $values = ['{{tempDir}}' => $tempDir];
+            $commands = $this->replaceCommandArraysWithValues($step_variables, $values, $step);
+            $commands = [$commands];
+        }
         dispatch(new DeleteTempDirectory($submission, $tempDir, $commands));
     }
 }
