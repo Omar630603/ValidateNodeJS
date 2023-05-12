@@ -35,16 +35,77 @@
                                 </tr>
                             </thead>
                             <tbody>
+
+                                <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                                    <th scope="row"
+                                        class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white text-center">
+                                        <span class="text-gray-50 rounded-md bg-secondary p-1 text-md">
+                                            Current Attempt {{$submission->attempts}}
+                                        </span>
+                                    </th>
+                                    <th scope="row"
+                                        class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
+                                        @php
+                                        $statusClass = '';
+                                        if ($submission->status === 'completed') {
+                                        $statusClass = 'bg-green-500';
+                                        } elseif ($submission->status === 'failed') {
+                                        $statusClass = 'bg-red-500';
+                                        } elseif ($submission->status === 'processing') {
+                                        $statusClass = 'bg-yellow-500';
+                                        } elseif ($submission->status === 'pending') {
+                                        $statusClass = 'bg-blue-500';
+                                        }
+                                        @endphp
+                                        <span class="text-gray-50 rounded-md {{$statusClass}} p-1 text-md">
+                                            {{ucfirst($submission->status)}}
+                                        </span>
+                                    </th>
+                                    <th scope="row"
+                                        class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
+                                        {{-- get the difference between start and end time from submission using carbon and if end is null then use current time --}}
+                                        @php
+                                        $start = Carbon\Carbon::parse($submission->start);
+                                        $end = Carbon\Carbon::parse($submission->end ?? now());
+                                        $time = $end->diff($start)->format('%H:%I:%S');
+                                        @endphp
+                                        {{$time}}
+                                    </th>
+                                    <td class="px-6 py-4 text-right">
+                                        <a href="/submissions/submission/{{ $submission->id }}"
+                                            class="font-medium text-blue-600 dark:text-blue-500 hover:underline">View</a>
+                                    </td>
+                                </tr>
+                                <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                                    <th scope="row"
+                                        class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
+                                        Past Attempts
+                                    </th>
+                                </tr>
                                 @forelse ($submission_history as $history)
                                 @if ($history->submission_id === $submission->id)
                                 <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
                                     <th scope="row"
-                                        class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
+                                        class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white text-center">
                                         {{$history->attempts}}
                                     </th>
                                     <th scope="row"
                                         class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
-                                        {{$history->status}}
+                                        @php
+                                        $statusClass = '';
+                                        if ($submission->status === 'completed') {
+                                        $statusClass = 'bg-green-500';
+                                        } elseif ($submission->status === 'failed') {
+                                        $statusClass = 'bg-red-500';
+                                        } elseif ($submission->status === 'processing') {
+                                        $statusClass = 'bg-secondary';
+                                        } elseif ($submission->status === 'pending') {
+                                        $statusClass = 'bg-gray-600';
+                                        }
+                                        @endphp
+                                        <span class="text-gray-50 rounded-md {{$statusClass}} p-1 text-md">
+                                            {{ucfirst($history->status)}}
+                                        </span>
                                     </th>
                                     <th scope="row"
                                         class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
@@ -67,36 +128,6 @@
                                     <x-not-found message="No Attempts Found" />
                                 </div>
                                 @endforelse
-                                <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-                                    <th scope="row"
-                                        class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white text-center">
-                                        Current Submission
-                                    </th>
-                                </tr>
-                                <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-                                    <th scope="row"
-                                        class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
-                                        {{$submission->attempts}}
-                                    </th>
-                                    <th scope="row"
-                                        class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
-                                        {{$submission->status}}
-                                    </th>
-                                    <th scope="row"
-                                        class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
-                                        {{-- get the difference between start and end time from submission using carbon and if end is null then use current time --}}
-                                        @php
-                                        $start = Carbon\Carbon::parse($submission->start);
-                                        $end = Carbon\Carbon::parse($submission->end ?? now());
-                                        $time = $end->diff($start)->format('%H:%I:%S');
-                                        @endphp
-                                        {{$time}}
-                                    </th>
-                                    <td class="px-6 py-4 text-right">
-                                        <a href="/submissions/submission/{{ $submission->id }}"
-                                            class="font-medium text-blue-600 dark:text-blue-500 hover:underline">View</a>
-                                    </td>
-                                </tr>
                             </tbody>
                         </table>
                     </div>
@@ -108,126 +139,124 @@
                 </div>
             </div>
         </div>
-        @elseif(request()->routeIs('submissions.show') || request()->routeIs('submissions.history'))
-        <x-slot name="header">
-            <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-                {{ __('Submission NO#').$submission->id.__(' of Project: ') . $submission->project->title .__(' attempt NO#: ').$submission->attempts }}
-            </h2>
-        </x-slot>
+    </div>
+    @elseif(request()->routeIs('submissions.show') || request()->routeIs('submissions.history'))
+    <x-slot name="header">
+        <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
+            {{ __('Submission NO#').$submission->id.__(' of Project: ') . $submission->project->title .__(' attempt NO#: ').$submission->attempts }}
+        </h2>
+    </x-slot>
 
-        <div class="py-5">
-            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                <div class="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-8">
-                    <div
-                        class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg md:col-span-1 md:row-span-1 md:rounded-md md:shadow-md md:py-1 md:px-3 lg:px-5 xl:px-7">
-                        <!-- content for the smaller column -->
-                        <div class="p-6 text-gray-900 dark:text-gray-100">
-                            <ol class="list-disc list-inside">
-                                <li class="list-none">
-                                    <div class="flex justify-start gap-2">
-                                        <x-pending_icon class="w-[20px] h-[20px] pt-[0.10rem]" id="start_pending_icon"
-                                            svgWidth='20px' svgHeight='20px' />
-                                        <x-success_icon class="hidden w-[20px] h-[20px] pt-[0.10rem]"
-                                            id="start_success_icon" svgWidth='20px' svgHeight='20px' />
-                                        <x-failed_icon class="hidden w-[20px] h-[20px] pt-[0.10rem]"
-                                            id="start_failed_icon" svgWidth='20px' svgHeight='20px' />
-                                        <span class="text-gray-400 font-semiblid stepNames">Start</span>
-                                    </div>
-                                </li>
-                                @forelse ($steps as $step)
-                                <li class="list-none">
-                                    <div class="flex justify-start gap-2">
-                                        <x-pending_icon class="w-[20px] h-[20px] pt-[0.10rem]"
-                                            id="{{$step->id}}_pending_icon" svgWidth='20px' svgHeight='20px' />
-                                        <x-success_icon class="hidden w-[20px] h-[20px] pt-[0.10rem]"
-                                            id="{{$step->id}}_success_icon" svgWidth='20px' svgHeight='20px' />
-                                        <x-failed_icon class="hidden w-[20px] h-[20px] pt-[0.10rem]"
-                                            id="{{$step->id}}_failed_icon" svgWidth='20px' svgHeight='20px' />
-                                        <span
-                                            class="text-gray-400 font-semiblid stepNames">{{$step->executionStep->name}}</span>
-                                    </div>
-                                </li>
-                                @if ($step->executionStep->name == 'NPM Run Tests')
-                                @forelse ($step->variables as $testCommandValue)
-                                @php
-                                $command = implode(" ",$step->executionStep->commands);
-                                $key = explode("=",$testCommandValue)[0];
-                                $value = explode("=",$testCommandValue)[1];
-                                $testStep = str_replace($key, $value, $command);
-                                $iconID = str_replace(" ", "_", $testStep);
-                                @endphp
-                                <li class="list-none pl-5">
-                                    <div class="flex justify-start gap-2">
-                                        <x-pending_icon class="w-[20px] h-[20px] pt-[0.10rem]"
-                                            id="{{$step->id}}_pending_icon_{{$iconID}}" svgWidth='20px'
-                                            svgHeight='20px' />
-                                        <x-success_icon class="hidden w-[20px] h-[20px] pt-[0.10rem]"
-                                            id="{{$step->id}}_success_icon_{{$iconID}}" svgWidth='20px'
-                                            svgHeight='20px' />
-                                        <x-failed_icon class="hidden w-[20px] h-[20px] pt-[0.10rem]"
-                                            id="{{$step->id}}_failed_icon_{{$iconID}}" svgWidth='20px'
-                                            svgHeight='20px' />
-                                        <span class="text-gray-400 font-semiblid stepTestNames">{{$testStep}}</span>
-                                    </div>
-                                </li>
-                                @empty
-                                <x-not-found message="No Tests Found" />
-                                @endforelse
-                                @endif
-                                @empty
-                                <x-not-found message="No Steps Found" />
-                                @endforelse
-                                <li class="list-none">
-                                    <div class="flex justify-start gap-2">
-                                        <x-pending_icon class="w-[20px] h-[20px] pt-[0.10rem]" id="done_pending_icon"
-                                            svgWidth='20px' svgHeight='20px' />
-                                        <x-success_icon class="hidden w-[20px] h-[20px] pt-[0.10rem]"
-                                            id="done_success_icon" svgWidth='20px' svgHeight='20px' />
-                                        <x-failed_icon class="hidden w-[20px] h-[20px] pt-[0.10rem]"
-                                            id="done_failed_icon" svgWidth='20px' svgHeight='20px' />
-                                        <span class="text-gray-400 font-semiblid stepNames">Done</span>
-                                    </div>
-                                </li>
-                            </ol>
-                        </div>
+    <div class="py-5">
+        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-8">
+                <div
+                    class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg md:col-span-1 md:row-span-1 md:rounded-md md:shadow-md md:py-1 md:px-3 lg:px-5 xl:px-7">
+                    <!-- content for the smaller column -->
+                    <div class="p-6 text-gray-900 dark:text-gray-100">
+                        <ol class="list-disc list-inside">
+                            <li class="list-none">
+                                <div class="flex justify-start gap-2">
+                                    <x-pending_icon class="w-[20px] h-[20px] pt-[0.10rem]" id="start_pending_icon"
+                                        svgWidth='20px' svgHeight='20px' />
+                                    <x-success_icon class="hidden w-[20px] h-[20px] pt-[0.10rem]"
+                                        id="start_success_icon" svgWidth='20px' svgHeight='20px' />
+                                    <x-failed_icon class="hidden w-[20px] h-[20px] pt-[0.10rem]" id="start_failed_icon"
+                                        svgWidth='20px' svgHeight='20px' />
+                                    <span class="text-gray-400 font-semiblid stepNames">Start</span>
+                                </div>
+                            </li>
+                            @forelse ($steps as $step)
+                            <li class="list-none">
+                                <div class="flex justify-start gap-2">
+                                    <x-pending_icon class="w-[20px] h-[20px] pt-[0.10rem]"
+                                        id="{{$step->id}}_pending_icon" svgWidth='20px' svgHeight='20px' />
+                                    <x-success_icon class="hidden w-[20px] h-[20px] pt-[0.10rem]"
+                                        id="{{$step->id}}_success_icon" svgWidth='20px' svgHeight='20px' />
+                                    <x-failed_icon class="hidden w-[20px] h-[20px] pt-[0.10rem]"
+                                        id="{{$step->id}}_failed_icon" svgWidth='20px' svgHeight='20px' />
+                                    <span
+                                        class="text-gray-400 font-semiblid stepNames">{{$step->executionStep->name}}</span>
+                                </div>
+                            </li>
+                            @if ($step->executionStep->name == 'NPM Run Tests')
+                            @forelse ($step->variables as $testCommandValue)
+                            @php
+                            $command = implode(" ",$step->executionStep->commands);
+                            $key = explode("=",$testCommandValue)[0];
+                            $value = explode("=",$testCommandValue)[1];
+                            $testStep = str_replace($key, $value, $command);
+                            $iconID = str_replace(" ", "_", $testStep);
+                            @endphp
+                            <li class="list-none pl-5">
+                                <div class="flex justify-start gap-2">
+                                    <x-pending_icon class="w-[20px] h-[20px] pt-[0.10rem]"
+                                        id="{{$step->id}}_pending_icon_{{$iconID}}" svgWidth='20px' svgHeight='20px' />
+                                    <x-success_icon class="hidden w-[20px] h-[20px] pt-[0.10rem]"
+                                        id="{{$step->id}}_success_icon_{{$iconID}}" svgWidth='20px' svgHeight='20px' />
+                                    <x-failed_icon class="hidden w-[20px] h-[20px] pt-[0.10rem]"
+                                        id="{{$step->id}}_failed_icon_{{$iconID}}" svgWidth='20px' svgHeight='20px' />
+                                    <span class="text-gray-400 font-semiblid stepTestNames">{{$testStep}}</span>
+                                </div>
+                            </li>
+                            @empty
+                            <x-not-found message="No Tests Found" />
+                            @endforelse
+                            @endif
+                            @empty
+                            <x-not-found message="No Steps Found" />
+                            @endforelse
+                            <li class="list-none">
+                                <div class="flex justify-start gap-2">
+                                    <x-pending_icon class="w-[20px] h-[20px] pt-[0.10rem]" id="done_pending_icon"
+                                        svgWidth='20px' svgHeight='20px' />
+                                    <x-success_icon class="hidden w-[20px] h-[20px] pt-[0.10rem]" id="done_success_icon"
+                                        svgWidth='20px' svgHeight='20px' />
+                                    <x-failed_icon class="hidden w-[20px] h-[20px] pt-[0.10rem]" id="done_failed_icon"
+                                        svgWidth='20px' svgHeight='20px' />
+                                    <span class="text-gray-400 font-semiblid stepNames">Done</span>
+                                </div>
+                            </li>
+                        </ol>
                     </div>
-                    <div
-                        class="bg-gray-200 dark:bg-gray-900 border-secondary border-2 overflow-hidden shadow-sm sm:rounded-lg md:col-span-2 md:row-span-1 md:rounded-md md:shadow-md md:py-6 md:px-8 lg:px-12 xl:px-16">
-                        <!-- content for the bigger column -->
+                </div>
+                <div
+                    class="bg-gray-200 dark:bg-gray-900 border-secondary border-2 overflow-hidden shadow-sm sm:rounded-lg md:col-span-2 md:row-span-1 md:rounded-md md:shadow-md md:py-6 md:px-8 lg:px-12 xl:px-16">
+                    <!-- content for the bigger column -->
 
-                        <div class="m-5 w-100 bg-gray-600 sm:rounded-lg md:rounded-md" id="progress">
-                            <div class="text-center w-[1%] h-5 bg-secondary text-white sm:rounded-lg md:rounded-md text-sm"
-                                id="bar">0%</div>
-                        </div>
-                        <div id="loader"
-                            class="mx-5 mt-1 float-right hidden h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] text-secondary motion-reduce:animate-[spin_1.5s_linear_infinite]"
-                            role="status">
-                            <span
-                                class="!absolute !-m-px !h-px !w-px !overflow-hidden !whitespace-nowrap !border-0 !p-0 ![clip:rect(0,0,0,0)]">Loading...</span>
-                        </div>
-                        <div id="refresh"
-                            class="hidden float-right cursor-pointer mx-5 mt-1 motion-reduce:animate-[spin_1.5s_linear_infinite]">
-                            <x-refresh_icon class="h-8 w-8" svgWidth='2rem' svgHeight='2rem' />
-                        </div>
-                        <div class="mx-5">
-                            <p class="text-white text-xl" id="submission_message"></p>
-                            <p class="text-white text-xl" id="submission_status"></p>
-                        </div>
-                        <div class="p-6 text-gray-900 dark:text-gray-100">
-                            <div class="text-white mt-5" id="submission_results">
-                                Waitting for the submission to progress...
-                            </div>
+                    <div class="m-5 w-100 bg-gray-600 sm:rounded-lg md:rounded-md" id="progress">
+                        <div class="text-center w-[1%] h-5 bg-secondary text-white sm:rounded-lg md:rounded-md text-sm"
+                            id="bar">0%</div>
+                    </div>
+                    <div id="loader"
+                        class="mx-5 mt-1 float-right hidden h-8 w-8 animate-spin rounded-full border-4 border-solid border-current border-r-transparent align-[-0.125em] text-secondary motion-reduce:animate-[spin_1.5s_linear_infinite]"
+                        role="status">
+                        <span
+                            class="!absolute !-m-px !h-px !w-px !overflow-hidden !whitespace-nowrap !border-0 !p-0 ![clip:rect(0,0,0,0)]">Loading...</span>
+                    </div>
+                    <div id="refresh"
+                        class="hidden float-right cursor-pointer mx-5 mt-1 motion-reduce:animate-[spin_1.5s_linear_infinite]">
+                        <x-refresh_icon class="h-8 w-8" svgWidth='2rem' svgHeight='2rem' />
+                    </div>
+                    <div class="mx-5">
+                        <p class="text-white text-xl" id="submission_message"></p>
+                        <p class="text-white text-xl mt-5" id="submission_status"></p>
+                    </div>
+                    <div class="p-6 text-gray-900 dark:text-gray-100">
+                        <div class="text-white mt-5" id="submission_results">
+                            Waitting for the submission to progress...
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
 
 
 
-        @section('scripts')
-        <script>
-            $(document).ready(function () {
+    @section('scripts')
+    <script>
+        $(document).ready(function () {
             // Left side steps
             const startElement = $(`.stepNames:contains(Start)`).closest('li');
             const stepNames = $('.stepNames');
@@ -283,11 +312,17 @@
                         },
                         success: function (response) {
                             if (response.status === 'processing' || response.status === 'pending') {
-                                checkSubmissionProgress();
-                                if (response.step !== null) {   
-                                    setTimeout(() => {
-                                        window.requestAnimationFrame(getSubmissionStatus);
-                                    }, 2000);                                }
+                                try {
+                                    checkSubmissionProgress();
+                                    if (response.step !== null) {  
+                                        console.log(response); 
+                                            setTimeout(() => {
+                                                window.requestAnimationFrame(getSubmissionStatus);
+                                            }, 2000);
+                                        };
+                                } catch (error) {
+                                    console.log(error);
+                                }
                             }else{
                                 if (response.status === 'failed') {
                                 // failed status
@@ -376,7 +411,8 @@
                         message: 'Something went wrong'
                     };
                     updateUIFailedStatus(error_response);
-                    console.log(error);
+                    throw error;
+                    // console.log(error);
                 }
             }
 
@@ -390,8 +426,7 @@
                 doneElement.find('#done_failed_icon').removeClass('hidden');
                 doneElement.find('span').addClass('text-red-400');
                 // show error message
-                submission_status.text("Submssion Status: " + response.status);
-                submission_message.text("Submssion Message: " + response.message);
+                updateSubmissionHeader(response.status, response.message);
                 // move the progress bar to 100% and red color
                 move(0, 100);
                 barElement.removeClass('bg-secondary');
@@ -403,8 +438,7 @@
                         refreshElement.click(function(){
                             // update the submission results and progress bar
                             move(0, 0);
-                            submission_message.text("Submssion Message: Restarting");
-                            submission_status.text("Submssion Status: Restarting...");
+                            updateSubmissionHeader('Wait', "Restarting...");
                             // request the server to refresh the submission
                             requestRefresh();
                         });
@@ -464,8 +498,7 @@
                 doneElement.find('#done_success_icon').removeClass('hidden');
                 doneElement.find('span').addClass('text-secondary');
                 // show the submission results
-                submission_status.text("Submssion Status: " + response.status);
-                submission_message.text("Submssion Message: " + response.message);
+                updateSubmissionHeader(response.status, response.message);
                 // move the progress bar to 100% and green color
                 move(0, 100);
                 barElement.removeClass('bg-secondary');
@@ -487,8 +520,9 @@
                     // clean the submission results
                     submission_results.empty();
                     // update the submission results
-                    submission_status.text("Submssion Status: " + response.status); 
-                    submission_message.text("Submssion Message: " + response.message);
+                    updateSubmissionHeader(response.status, response.message);
+                    // submission_status.text("Submssion Status: " + response.status); 
+                    // submission_message.text("Submssion Message: " + response.message);
                     // order the steps by order
                     let arr = Object.entries(response.results);
                     arr.sort((a, b) => parseInt(a[1].order) - parseInt(b[1].order));
@@ -603,8 +637,29 @@
                         </div>`);
                 }
             }
+
+            function updateSubmissionHeader(status, message){
+                submission_status.text("Submssion Status: "); 
+                submission_message.text("Submssion Message: " + message);
+                let statusClass = '';
+                if (status === 'completed') {
+                    statusClass = 'bg-green-500';
+                } else if (status === 'failed') {
+                    statusClass = 'bg-red-500';
+                } else if (status === 'processing') {
+                    statusClass = 'bg-secondary';
+                } else if (status === 'pending') {
+                    statusClass = 'bg-gray-600';
+                } else if (status === 'Wait') {
+                    statusClass = 'bg-gray-600';
+                }
+                status = status.charAt(0).toUpperCase() + status.slice(1);
+                submission_status.append(`<span class="text-gray-50 rounded-md ${statusClass} p-1 text-md">
+                    ${status}
+                </span>`);
+            }
         });
-        </script>
-        @endsection
-        @endif
+    </script>
+    @endsection
+    @endif
 </x-app-layout>

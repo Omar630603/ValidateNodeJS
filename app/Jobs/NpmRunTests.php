@@ -40,9 +40,9 @@ class NpmRunTests implements ShouldQueue
         $this->updateSubmissionStatus($submission, Submission::$PROCESSING, "NPM running tests");
         try {
             // processing
-            $pass_all = false;
+            $pass_all = [];
             $commands = $this->command;
-            foreach ($commands as  $command) {
+            foreach ($commands as $key =>  $command) {
                 $command_string = implode(" ", $command);
                 Log::info("Running {$command_string} in folder {$this->tempDir}");
                 $this->updateSubmissionTestsResultsStatus($command_string, $submission, Submission::$PROCESSING, "Running");
@@ -52,17 +52,17 @@ class NpmRunTests implements ShouldQueue
                 $process_pid = $process->getPid();
                 $process->wait();
                 if ($process->isSuccessful()) {
-                    $pass_all = true;
+                    $pass_all[$key] = true;
                     Log::info("{$command_string} in folder {$this->tempDir}");
                     $this->updateSubmissionTestsResultsStatus($command_string, $submission, Submission::$COMPLETED, $process->getOutput());
                 } else {
-                    $pass_all = false;
+                    $pass_all[$key] = false;
                     Log::error("Failed to NPM run test {$command_string} "   . $process->getErrorOutput());
                     $this->updateSubmissionTestsResultsStatus($command_string, $submission, Submission::$FAILED, $process->getErrorOutput());
                     Process::fromShellCommandline('kill ' . $process_pid)->run();
                 }
             }
-            if ($pass_all) {
+            if (in_array(false, $pass_all) == false) {
                 Log::info("NPM ran tests in folder {$this->tempDir}");
                 $this->updateSubmissionStatus($submission, Submission::$COMPLETED, "NPM tested");
             } else {
