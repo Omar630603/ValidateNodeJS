@@ -478,10 +478,7 @@ class SubmissionController extends Controller
         $step_variables = $step->variables;
         $values = ['{{options}}' => " "];
         $commands = $this->replaceCommandArraysWithValues($step_variables, $values, $step);
-        $package_lock_json_path = public_path() . '/assets/projects/' . $submission->project->title . '/files/package-lock.json'; // specify the file name to check
-        $node_modulesFolderPath = public_path() . '/assets/projects/' . $submission->project->title . '/node_modules'; // specify the folder name to check
-        $no_copy = !is_dir($node_modulesFolderPath) || !file_exists($package_lock_json_path);
-        dispatch(new NpmInstall($submission, $tempDir, $commands, $no_copy));
+        dispatch(new NpmInstall($submission, $tempDir, $commands));
     }
 
     private function lunchNpmRunStartJob($submission, $tempDir, $step)

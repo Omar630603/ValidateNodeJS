@@ -62,6 +62,11 @@ class SubmissionHistory extends Model
         return $this->type == self::$URL;
     }
 
+    public function submission()
+    {
+        return $this->belongsTo(SubmissionStatus::class);
+    }
+
     public function getExecutionSteps()
     {
         if ($this->isGithubUrl()) {

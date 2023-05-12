@@ -20,16 +20,14 @@ class NpmInstall implements ShouldQueue
     public $submission;
     public $tempDir;
     public $command;
-    public $no_copy;
     /**
      * Create a new job instance.
      */
-    public function __construct($submission, $tempDir, $command, $no_copy)
+    public function __construct($submission, $tempDir, $command)
     {
         $this->submission = $submission;
         $this->tempDir = $tempDir;
         $this->command = $command;
-        $this->no_copy = $no_copy;
     }
 
     /**
@@ -43,29 +41,19 @@ class NpmInstall implements ShouldQueue
         try {
             // processing
             // check if the module is already exist within the assets folder
-            $package_lock_json_path = public_path() . '/assets/projects/' . $submission->project->title . '/files/package-lock.json'; // specify the file name to check
-            $node_modulesFolderPath = public_path() . '/assets/projects/' . $submission->project->title . '/node_modules'; // specify the folder name to check
-            if ($this->no_copy) {
-                $process = new Process($this->command, $this->tempDir, null, null, 120);
-                $process->start();
-                $process_pid = $process->getPid();
-                $process->wait();
-                if ($process->isSuccessful()) {
-                    Log::info("NPM installed in folder {$this->tempDir}");
-                    $this->updateSubmissionStatus($submission, Submission::$COMPLETED, "NPM installed");
-                } else {
-                    Log::error("Failed to NPM install in folder {$this->tempDir} "   . $process->getErrorOutput());
-                    $this->updateSubmissionStatus($submission, Submission::$FAILED, "Failed to NPM install");
-                    Process::fromShellCommandline('kill ' . $process_pid)->run();
-                    Process::fromShellCommandline("rm -rf {$this->tempDir}")->run();
-                    throw new \Exception($process->getErrorOutput());
-                }
-            } else {
-                Process::fromShellCommandline('cp ' . $package_lock_json_path . ' ' . $this->tempDir, null, null, null, null)->run();
-                Process::fromShellCommandline('cp -r ' . $node_modulesFolderPath . ' ' . $this->tempDir, null, null, null, null)->run();
-
-                Log::info("NPM installed in folder {$this->tempDir} from assets folder");
+            $process = new Process($this->command, $this->tempDir, null, null, 120);
+            $process->start();
+            $process_pid = $process->getPid();
+            $process->wait();
+            if ($process->isSuccessful()) {
+                Log::info("NPM installed in folder {$this->tempDir}");
                 $this->updateSubmissionStatus($submission, Submission::$COMPLETED, "NPM installed");
+            } else {
+                Log::error("Failed to NPM install in folder {$this->tempDir} "   . $process->getErrorOutput());
+                $this->updateSubmissionStatus($submission, Submission::$FAILED, "Failed to NPM install");
+                Process::fromShellCommandline('kill ' . $process_pid)->run();
+                Process::fromShellCommandline("rm -rf {$this->tempDir}")->run();
+                throw new \Exception($process->getErrorOutput());
             }
         } catch (\Throwable $th) {
             Log::error("Failed to NPM install in folder {$this->tempDir}" . $th->getMessage());

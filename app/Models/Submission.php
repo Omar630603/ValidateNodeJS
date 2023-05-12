@@ -64,6 +64,11 @@ class Submission extends Model implements HasMedia
         return $this->type == self::$URL;
     }
 
+    public function history()
+    {
+        return $this->hasMany(SubmissionHistory::class);
+    }
+
     public function getExecutionSteps()
     {
         if ($this->isGithubUrl()) {
@@ -264,5 +269,10 @@ class Submission extends Model implements HasMedia
             $next_step = $this->getNextExecutionStep($next_step->id ?? null);
         }
         $this->updateStatus(Submission::$PROCESSING);
+    }
+
+    public function getTotalAttemptsCount()
+    {
+        return $this->history->count() + 1;
     }
 }

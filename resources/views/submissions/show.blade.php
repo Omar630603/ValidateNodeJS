@@ -24,6 +24,8 @@
                                 {{$submission->project->title}} - submission number #{{$no}}
                                 <p class="mt-1 text-sm font-normal text-gray-500 dark:text-gray-400">Here is the the
                                     list of attempts for this submission</p>
+                                <p class="mt-1 text-sm font-normal text-gray-500 dark:text-gray-400 float-right">Total
+                                    Attempts: {{$submission->getTotalAttemptsCount()}}</p>
                             </caption>
                             <thead
                                 class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
@@ -82,8 +84,7 @@
                                         Past Attempts
                                     </th>
                                 </tr>
-                                @forelse ($submission_history as $history)
-                                @if ($history->submission_id === $submission->id)
+                                @forelse ($submission->history as $history)
                                 <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
                                     <th scope="row"
                                         class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white text-center">
@@ -121,8 +122,6 @@
                                             class="font-medium text-blue-600 dark:text-blue-500 hover:underline">View</a>
                                     </td>
                                 </tr>
-                                @else
-                                @endif
                                 @empty
                                 <div class="p-5">
                                     <x-not-found message="No Attempts Found" />
