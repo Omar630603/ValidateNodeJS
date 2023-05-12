@@ -44,9 +44,12 @@ class ProjectSeeder extends Seeder
         $project_api_experiment = Project::where('title', 'api-experiment')->first();
         $project_auth_experiment = Project::where('title', 'auth-experiment')->first();
 
+        // images
         $project_api_experiment->addMedia(storage_path('app/public/assets/projects/api-experiment/images/api-experiment.png'))->toMediaCollection('project_images', 'public_projects_files');
+
         $project_auth_experiment->addMedia(storage_path('app/public/assets/projects/auth-experiment/images/auth-experiment.png'))->toMediaCollection('project_images', 'public_projects_files');
 
+        // files
         $project_api_experiment->addMedia(storage_path('app/public/assets/projects/api-experiment/files/.env'))->toMediaCollection('project_files', 'public_projects_files');
         $project_api_experiment->addMedia(storage_path('app/public/assets/projects/api-experiment/files/package.json'))->toMediaCollection('project_files', 'public_projects_files');
 
@@ -64,7 +67,6 @@ class ProjectSeeder extends Seeder
         $project_api_experiment->addMedia(storage_path('app/public/assets/projects/api-experiment/tests/web/testA03.test.js'))->toMediaCollection('project_tests_web', 'public_projects_files');
         $project_api_experiment->addMedia(storage_path('app/public/assets/projects/api-experiment/tests/web/testA04.test.js'))->toMediaCollection('project_tests_web', 'public_projects_files');
         $project_api_experiment->addMedia(storage_path('app/public/assets/projects/api-experiment/tests/web/testA05.test.js'))->toMediaCollection('project_tests_web', 'public_projects_files');
-
         $project_api_experiment->addMedia(storage_path('app/public/assets/projects/api-experiment/tests/web/images/create-product-page.png'))->toMediaCollection('project_tests_images', 'public_projects_files');
         $project_api_experiment->addMedia(storage_path('app/public/assets/projects/api-experiment/tests/web/images/error-notFound-page.png'))->toMediaCollection('project_tests_images', 'public_projects_files');
         $project_api_experiment->addMedia(storage_path('app/public/assets/projects/api-experiment/tests/web/images/index-page.png'))->toMediaCollection('project_tests_images', 'public_projects_files');
@@ -84,7 +86,6 @@ class ProjectSeeder extends Seeder
         $project_auth_experiment->addMedia(storage_path('app/public/assets/projects/auth-experiment/tests/web/testB03.test.js'))->toMediaCollection('project_tests_web', 'public_projects_files');
         $project_auth_experiment->addMedia(storage_path('app/public/assets/projects/auth-experiment/tests/web/testB04.test.js'))->toMediaCollection('project_tests_web', 'public_projects_files');
         $project_auth_experiment->addMedia(storage_path('app/public/assets/projects/auth-experiment/tests/web/testB05.test.js'))->toMediaCollection('project_tests_web', 'public_projects_files');
-
         $project_auth_experiment->addMedia(storage_path('app/public/assets/projects/auth-experiment/tests/web/images/edit-page.png'))->toMediaCollection('project_tests_images', 'public_projects_files');
         $project_auth_experiment->addMedia(storage_path('app/public/assets/projects/auth-experiment/tests/web/images/edit-password-page.png'))->toMediaCollection('project_tests_images', 'public_projects_files');
         $project_auth_experiment->addMedia(storage_path('app/public/assets/projects/auth-experiment/tests/web/images/error-notFound-page.png'))->toMediaCollection('project_tests_images', 'public_projects_files');
@@ -94,5 +95,39 @@ class ProjectSeeder extends Seeder
         $project_auth_experiment->addMedia(storage_path('app/public/assets/projects/auth-experiment/tests/web/images/login-page-with-error.png'))->toMediaCollection('project_tests_images', 'public_projects_files');
         $project_auth_experiment->addMedia(storage_path('app/public/assets/projects/auth-experiment/tests/web/images/profile-page.png'))->toMediaCollection('project_tests_images', 'public_projects_files');
         $project_auth_experiment->addMedia(storage_path('app/public/assets/projects/auth-experiment/tests/web/images/register-page.png'))->toMediaCollection('project_tests_images', 'public_projects_files');
+
+        // guides
+        $project_api_experiment->addMedia(storage_path('app/public/assets/projects/api-experiment/guides/Guide A01.pdf'))->toMediaCollection('project_guides', 'public_projects_files');
+        $project_api_experiment->addMedia(storage_path('app/public/assets/projects/api-experiment/guides/Guide A02.pdf'))->toMediaCollection('project_guides', 'public_projects_files');
+        $project_api_experiment->addMedia(storage_path('app/public/assets/projects/api-experiment/guides/Guide A03.pdf'))->toMediaCollection('project_guides', 'public_projects_files');
+        $project_api_experiment->addMedia(storage_path('app/public/assets/projects/api-experiment/guides/Guide A04.pdf'))->toMediaCollection('project_guides', 'public_projects_files');
+        $project_api_experiment->addMedia(storage_path('app/public/assets/projects/api-experiment/guides/Guide A05.pdf'))->toMediaCollection('project_guides', 'public_projects_files');
+
+        $project_auth_experiment->addMedia(storage_path('app/public/assets/projects/auth-experiment/guides/Guide B01.pdf'))->toMediaCollection('project_guides', 'public_projects_files');
+        $project_auth_experiment->addMedia(storage_path('app/public/assets/projects/auth-experiment/guides/Guide B02.pdf'))->toMediaCollection('project_guides', 'public_projects_files');
+        $project_auth_experiment->addMedia(storage_path('app/public/assets/projects/auth-experiment/guides/Guide B03.pdf'))->toMediaCollection('project_guides', 'public_projects_files');
+        $project_auth_experiment->addMedia(storage_path('app/public/assets/projects/auth-experiment/guides/Guide B04.pdf'))->toMediaCollection('project_guides', 'public_projects_files');
+        $project_auth_experiment->addMedia(storage_path('app/public/assets/projects/auth-experiment/guides/Guide B05.pdf'))->toMediaCollection('project_guides', 'public_projects_files');
+
+        // supplements
+        $project_api_experiment->addMedia(storage_path('app/public/assets/projects/api-experiment/supplements/.env.example'))->toMediaCollection('project_supplements', 'public_projects_files');
+        $project_api_experiment->addMedia(storage_path('app/public/assets/projects/api-experiment/supplements/.gitignore'))->toMediaCollection('project_supplements', 'public_projects_files');
+        $project_api_experiment->addMedia(storage_path('app/public/assets/projects/api-experiment/supplements/initial_data.json'))->toMediaCollection('project_supplements', 'public_projects_files');
+        $project_api_experiment->addMedia(storage_path('app/public/assets/projects/api-experiment/supplements/main.css'))->toMediaCollection('project_supplements', 'public_projects_files');
+        $project_api_experiment->addMedia(storage_path('app/public/assets/projects/api-experiment/supplements/main.ejs'))->toMediaCollection('project_supplements', 'public_projects_files');
+
+        $project_auth_experiment->addMedia(storage_path('app/public/assets/projects/auth-experiment/supplements/.env.example'))->toMediaCollection('project_supplements', 'public_projects_files');
+        $project_auth_experiment->addMedia(storage_path('app/public/assets/projects/auth-experiment/supplements/.gitignore'))->toMediaCollection('project_supplements', 'public_projects_files');
+        $project_auth_experiment->addMedia(storage_path('app/public/assets/projects/auth-experiment/supplements/main.css'))->toMediaCollection('project_supplements', 'public_projects_files');
+        $project_auth_experiment->addMedia(storage_path('app/public/assets/projects/auth-experiment/supplements/main.ejs'))->toMediaCollection('project_supplements', 'public_projects_files');
+
+        // zips
+        $project_api_experiment->addMedia(storage_path('app/public/assets/projects/api-experiment/zips/guides.zip'))->toMediaCollection('project_zips', 'public_projects_files');
+        $project_api_experiment->addMedia(storage_path('app/public/assets/projects/api-experiment/zips/supplements.zip'))->toMediaCollection('project_zips', 'public_projects_files');
+        $project_api_experiment->addMedia(storage_path('app/public/assets/projects/api-experiment/zips/tests.zip'))->toMediaCollection('project_zips', 'public_projects_files');
+
+        $project_auth_experiment->addMedia(storage_path('app/public/assets/projects/auth-experiment/zips/guides.zip'))->toMediaCollection('project_zips', 'public_projects_files');
+        $project_auth_experiment->addMedia(storage_path('app/public/assets/projects/auth-experiment/zips/supplements.zip'))->toMediaCollection('project_zips', 'public_projects_files');
+        $project_auth_experiment->addMedia(storage_path('app/public/assets/projects/auth-experiment/zips/tests.zip'))->toMediaCollection('project_zips', 'public_projects_files');
     }
 }

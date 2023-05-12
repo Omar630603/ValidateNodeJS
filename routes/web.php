@@ -30,6 +30,9 @@ Route::middleware('auth')->group(function () {
     // Projects
     Route::prefix('projects')->controller(ProjectController::class)->group(function () {
         Route::get('/', 'index')->name('projects');
+        Route::get('/project/{project_id}', 'show')->name('projects.show');
+        Route::get('/project/{project_id}/download', 'download')->name('projects.download');
+        Route::get('pdf', 'showPDF')->name('projects.pdf');
     });
     // Submissions
     Route::prefix('submissions')->group(function () {

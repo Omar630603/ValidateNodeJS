@@ -50,6 +50,6 @@ class Project extends  Model implements HasMedia
 
     public function getImageAttribute(): string
     {
-        return $this->getFirstMediaUrl('public_projects_images');
+        return $this->getFirstMediaUrl('project_images');
     }
 }

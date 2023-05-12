@@ -47,7 +47,7 @@ return [
         'public_projects_files' => [
             'driver' => 'local',
             'root' => storage_path('app/public/projects'),
-            'url' => env('APP_URL') . '/storage',
+            'url' => env('APP_URL') . 'storage/projects',
             'visibility' => 'public',
             'throw' => false,
         ],
@@ -55,7 +55,7 @@ return [
         'public_submissions_files' => [
             'driver' => 'local',
             'root' => storage_path('app/public/tmp/submissions_zip_files'),
-            'url' => env('APP_URL') . '/storage',
+            'url' => env('APP_URL') . 'storage/tmp/submissions_zip_files',
             'visibility' => 'public',
             'throw' => false,
         ],

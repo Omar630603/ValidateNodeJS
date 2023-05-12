@@ -37,15 +37,14 @@
                                 </tr>
                             </thead>
                             <tbody>
-
                                 <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-                                    <th scope="row"
+                                    <td scope="row"
                                         class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white text-center">
                                         <span class="text-gray-50 rounded-md bg-secondary p-1 text-md">
                                             Current Attempt {{$submission->attempts}}
                                         </span>
-                                    </th>
-                                    <th scope="row"
+                                    </td>
+                                    <td scope="row"
                                         class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
                                         @php
                                         $statusClass = '';
@@ -62,8 +61,8 @@
                                         <span class="text-gray-50 rounded-md {{$statusClass}} p-1 text-md">
                                             {{ucfirst($submission->status)}}
                                         </span>
-                                    </th>
-                                    <th scope="row"
+                                    </td>
+                                    <td scope="row"
                                         class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
                                         {{-- get the difference between start and end time from submission using carbon and if end is null then use current time --}}
                                         @php
@@ -72,25 +71,25 @@
                                         $time = $end->diff($start)->format('%H:%I:%S');
                                         @endphp
                                         {{$time}}
-                                    </th>
+                                    </td>
                                     <td class="px-6 py-4 text-right">
                                         <a href="/submissions/submission/{{ $submission->id }}"
                                             class="font-medium text-blue-600 dark:text-blue-500 hover:underline">View</a>
                                     </td>
                                 </tr>
                                 <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-                                    <th scope="row"
+                                    <td scope="row"
                                         class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
                                         Past Attempts
-                                    </th>
+                                    </td>
                                 </tr>
                                 @forelse ($submission->history as $history)
                                 <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
-                                    <th scope="row"
+                                    <td scope="row"
                                         class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white text-center">
                                         {{$history->attempts}}
-                                    </th>
-                                    <th scope="row"
+                                    </td>
+                                    <td scope="row"
                                         class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
                                         @php
                                         $statusClass = '';
@@ -107,8 +106,8 @@
                                         <span class="text-gray-50 rounded-md {{$statusClass}} p-1 text-md">
                                             {{ucfirst($history->status)}}
                                         </span>
-                                    </th>
-                                    <th scope="row"
+                                    </td>
+                                    <td scope="row"
                                         class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
                                         @php
                                         $history_start = Carbon\Carbon::parse($history->start);
@@ -116,7 +115,7 @@
                                         $history_time = $history_end->diff($history_start)->format('%H:%I:%S');
                                         @endphp
                                         {{$history_time}}
-                                    </th>
+                                    </td>
                                     <td class="px-6 py-4 text-right">
                                         <a href="/submissions/submission/history/{{ $history->id }}"
                                             class="font-medium text-blue-600 dark:text-blue-500 hover:underline">View</a>
@@ -124,7 +123,7 @@
                                 </tr>
                                 @empty
                                 <div class="p-5">
-                                    <x-not-found message="No Attempts Found" />
+                                    <x-not-found message="No Past Attempts Found" />
                                 </div>
                                 @endforelse
                             </tbody>

@@ -11,6 +11,6 @@
         @endforeach
     </div>
     @else
-    <x-not-found message="No projects found" />
+    <x-not-found message="No Projects Found" />
     @endif
 </div>

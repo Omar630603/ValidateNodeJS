@@ -14,14 +14,12 @@ use App\Jobs\ReplacePackageJson;
 use App\Jobs\UnzipZipFiles;
 use App\Models\ExecutionStep;
 use App\Models\Project;
-use App\Models\ProjectExecutionStep;
 use App\Models\Submission;
 use App\Models\SubmissionHistory;
 use App\Models\TemporaryFile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Symfony\Component\Process\Process;
 use Yajra\DataTables\Facades\DataTables;
 
@@ -29,33 +27,18 @@ class SubmissionController extends Controller
 {
     public function index(Request $request)
     {
-        // $step = ProjectExecutionStep::find(9);
-        // $tempDir = $this->getTempDir($submission);
-
-        // $commands = $step->executionStep->commands;
-        // dispatch(new NpmRunStart($submission, $tempDir, $commands));
-
-        // $commands = [];
-        // $tests = $submission->project->projectExecutionSteps->where('execution_step_id', $step->executionStep->id)->first()->variables;
-        // foreach ($tests as $testCommandValue) {
-        //     $command = implode(" ", $step->executionStep->commands);
-        //     $key = explode("=", $testCommandValue)[0];
-        //     $value = explode("=", $testCommandValue)[1];
-        //     $testName = str_replace($key, $value, $command);
-        //     array_push($commands, explode(" ", $testName));
-        // }
-        // dispatch(new NpmRunTests($submission, $tempDir, $commands));
-
         $user = $request->user();
         $projects = Project::skip(0)->take(3)->get();
         if ($request->ajax()) {
             $data = DB::table('projects')
-                ->select('projects.id', 'projects.title', DB::raw('COUNT(submissions.id) as submission_count'))
-                ->leftJoin('submissions', function ($join) use ($user) {
-                    $join->on('projects.id', '=', 'submissions.project_id')
-                        ->where('submissions.user_id', '=', $user->id);
-                })
-                ->groupBy('projects.id');
+                ->select(
+                    'projects.id',
+                    'projects.title',
+                    DB::raw('(SELECT COUNT(DISTINCT submissions.id) FROM submissions WHERE submissions.project_id = projects.id AND submissions.user_id = ?) as submission_count'),
+                    DB::raw('(SELECT COUNT(*) FROM submission_histories INNER JOIN submissions ON submissions.id = submission_histories.submission_id WHERE submissions.project_id = projects.id AND submissions.user_id = ?) as attempts_count')
+                )
+                ->groupBy('projects.id', 'projects.title')
+                ->setBindings([$user->id, $user->id]);
 
 
             return DataTables::of($data)
@@ -402,7 +385,7 @@ class SubmissionController extends Controller
         $step_variables = $step->variables;
         $values = ["{{repoUrl}}" => $repoUrl, '{{tempDir}}' => $tempDir];
         $commands = $this->replaceCommandArraysWithValues($step_variables, $values, $step);
-        dispatch(new CloneRepository($submission, $repoUrl, $tempDir, $commands));
+        dispatch(new CloneRepository($submission, $repoUrl, $tempDir, $commands))->onQueue(ExecutionStep::$CLONE_REPOSITORY);
     }
 
     private function lunchUnzipZipFilesJob($submission, $zipFileDir, $tempDir, $step)
@@ -411,7 +394,7 @@ class SubmissionController extends Controller
         $step_variables = $step->variables;
         $values = ['{{zipFileDir}}' => $zipFileDir, '{{tempDir}}' => $tempDir];
         $commands = $this->replaceCommandArraysWithValues($step_variables, $values, $step);
-        dispatch(new UnzipZipFiles($submission, $zipFileDir, $tempDir, $commands));
+        dispatch(new UnzipZipFiles($submission, $zipFileDir, $tempDir, $commands))->onQueue(ExecutionStep::$UNZIP_ZIP_FILES);
     }
 
     private function lunchExamineFolderStructureJob($submission, $tempDir, $step)
@@ -420,7 +403,7 @@ class SubmissionController extends Controller
         $step_variables = $step->variables;
         $values = ['{{tempDir}}' => $tempDir];
         $commands = $this->replaceCommandArraysWithValues($step_variables, $values, $step);
-        dispatch(new ExamineFolderStructure($submission, $tempDir, $commands));
+        dispatch(new ExamineFolderStructure($submission, $tempDir, $commands))->onQueue(ExecutionStep::$EXAMINE_FOLDER_STRUCTURE);
     }
 
     private function lunchAddEnvFileJob($submission, $envFile, $tempDir, $step)
@@ -429,7 +412,7 @@ class SubmissionController extends Controller
         $step_variables = $step->variables;
         $values = ['{{envFile}}' => $envFile, '{{tempDir}}' => $tempDir];
         $commands = $this->replaceCommandArraysWithValues($step_variables, $values, $step);
-        dispatch(new AddEnvFile($submission, $envFile, $tempDir, $commands));
+        dispatch(new AddEnvFile($submission, $envFile, $tempDir, $commands))->onQueue(ExecutionStep::$ADD_ENV_FILE);
     }
 
     private function lunchReplacePackageJsonJob($submission, $packageJson, $tempDir, $step)
@@ -438,7 +421,7 @@ class SubmissionController extends Controller
         $step_variables = $step->variables;
         $values = ['{{packageJson}}' => $packageJson, '{{tempDir}}' => $tempDir];
         $commands = $this->replaceCommandArraysWithValues($step_variables, $values, $step);
-        dispatch(new ReplacePackageJson($submission, $packageJson, $tempDir, $commands));
+        dispatch(new ReplacePackageJson($submission, $packageJson, $tempDir, $commands))->onQueue(ExecutionStep::$REPLACE_PACKAGE_JSON);
     }
 
     private function lunchCopyTestsFolderJob($submission, $tempDir, $step)
@@ -469,7 +452,7 @@ class SubmissionController extends Controller
             $commands[3] = $tempDir . '/tests/web/images';
             array_push($commandsArray, $commands);
         }
-        dispatch(new CopyTestsFolder($submission, $testsDir, $tempDir, $commandsArray));
+        dispatch(new CopyTestsFolder($submission, $testsDir, $tempDir, $commandsArray))->onQueue(ExecutionStep::$COPY_TESTS_FOLDER);
     }
 
     private function lunchNpmInstallJob($submission, $tempDir, $step)
@@ -478,13 +461,13 @@ class SubmissionController extends Controller
         $step_variables = $step->variables;
         $values = ['{{options}}' => " "];
         $commands = $this->replaceCommandArraysWithValues($step_variables, $values, $step);
-        dispatch(new NpmInstall($submission, $tempDir, $commands));
+        dispatch(new NpmInstall($submission, $tempDir, $commands))->onQueue(ExecutionStep::$NPM_INSTALL);
     }
 
     private function lunchNpmRunStartJob($submission, $tempDir, $step)
     {
         $commands = $step->executionStep->commands;
-        dispatch_sync(new NpmRunStart($submission, $tempDir, $commands));
+        dispatch_sync(new NpmRunStart($submission, $tempDir, $commands))->onQueue(ExecutionStep::$NPM_RUN_START);
     }
 
     private function lunchNpmRunTestsJob($submission, $tempDir, $step)
@@ -498,7 +481,7 @@ class SubmissionController extends Controller
             $testName = str_replace($key, $value, $command);
             array_push($commands, explode(" ", $testName));
         }
-        dispatch_sync(new NpmRunTests($submission, $tempDir, $commands));
+        dispatch_sync(new NpmRunTests($submission, $tempDir, $commands))->onQueue(ExecutionStep::$NPM_RUN_TESTS);
     }
 
     private function lunchDeleteTempDirectoryJob($submission, $tempDir, $step, $commands = null)
@@ -510,6 +493,6 @@ class SubmissionController extends Controller
             $commands = $this->replaceCommandArraysWithValues($step_variables, $values, $step);
             $commands = [$commands];
         }
-        dispatch(new DeleteTempDirectory($submission, $tempDir, $commands));
+        dispatch_sync(new DeleteTempDirectory($submission, $tempDir, $commands))->onQueue(ExecutionStep::$DELETE_TEMP_DIRECTORY);
     }
 }

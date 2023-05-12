@@ -3,6 +3,7 @@
         <tr>
             <th>Title</th>
             <th>Submission Count</th>
+            <th>Attempts Count</th>
         </tr>
     </thead>
     <tbody>
@@ -32,10 +33,11 @@
                 "next": ">",
             },
         },
-        ajax: "{{ route('dashboard') }}",
+        ajax: "{{ route('submissions') }}",
         columns: [
             {data: 'title', name: 'title', orderable: true, searchable: true},
-            {data: 'submission_count', name: 'submission_count', orderable: true, searchable: false, className: "text-center"}
+            {data: 'submission_count', name: 'submission_count', orderable: true, searchable: false, className: "text-center"},
+            {data: 'attempts_count', name: 'attempts_count', orderable: true, searchable: false, className: "text-center"}
         ]
     });
   });
