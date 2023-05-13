@@ -80,9 +80,10 @@
             type: 'GET',
             data: {type: type},
             success: function (response) {
-                
+                window.location.href = response;
             },
             error: function (error) {
+                alert('Something went wrong. Please try again later.');
                 console.log(error);
             }
         });
