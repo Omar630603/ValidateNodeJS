@@ -185,6 +185,7 @@ describe("Testing the create product page form submission", () => {
         await page.type("#price", "100");
         await page.type("#description", "Test Product Description");
         await page.click("form > button.btn.btn-primary");
+        await new Promise((resolve) => setTimeout(resolve, 1000));
 
         const message = await page.$eval("p.message", (el) => el.textContent);
         expect(
@@ -214,6 +215,7 @@ describe("Testing the create product page form submission", () => {
     it("should not create a new product with empty fields", async () => {
         await page.type("#name", "New Product");
         await page.click("form > button.btn.btn-primary");
+        await new Promise((resolve) => setTimeout(resolve, 1000));
 
         const message = await page.$eval("p.message", (el) => el.textContent);
         expect(

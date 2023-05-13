@@ -2,8 +2,10 @@
     <thead>
         <tr>
             <th>Title</th>
-            <th>Submission Count</th>
-            <th>Attempts Count</th>
+            {{-- <th>Submission Count</th> --}}
+            <th class="text-center">Attempts Count</th>
+            <th class="text-center">Status</th>
+            <th class="text-center">Action</th>
         </tr>
     </thead>
     <tbody>
@@ -11,6 +13,59 @@
 </table>
 @section('scripts')
 <script type="text/javascript">
+    function requestServer(element){
+        let submission_id = element.attr('data-submission-id');
+        let request_type = element.attr('data-request-type');
+
+        switch (request_type) {
+            case "delete":
+                swal({
+                    title: "Are you sure?",
+                    text: "You are about to delete this submission!",
+                    icon: "warning",
+                    buttons: true,
+                    dangerMode: true,
+                }).then((willDelete) => {
+                    if (willDelete) {
+                        $.ajax({
+                            url: '/submissions/submission/' + submission_id,
+                            type: 'DELETE',
+                            data: {
+                                submission_id: submission_id,
+                                _token: '{{ csrf_token() }}',
+                            },
+                            success: function(data) {
+                                swal({
+                                    title: "Success!",
+                                    text: "Your submission has been deleted!",
+                                    icon: "success",
+                                    button: "Ok",
+                                }).then(function() {
+                                    window.location = "/submissions";
+                                });
+                            },
+                            error: function(data) {
+                                swal({
+                                    title: "Error!",
+                                    text: "Something went wrong!",
+                                    icon: "error",
+                                    button: "Ok",
+                                });
+                            }
+                        });
+                    }
+                });
+                break;
+            case "restart":
+                break;
+            case "change-source-code":
+                break;
+            default:
+                break;
+        }
+    }
+
+
     $(function () {
     var table = $('#submissions_table').DataTable({
         "processing": true,
@@ -36,8 +91,10 @@
         ajax: "{{ route('submissions') }}",
         columns: [
             {data: 'title', name: 'title', orderable: true, searchable: true},
-            {data: 'submission_count', name: 'submission_count', orderable: true, searchable: false, className: "text-center"},
-            {data: 'attempts_count', name: 'attempts_count', orderable: true, searchable: false, className: "text-center"}
+            // {data: 'submission_count', name: 'submission_count', orderable: true, searchable: false, className: "text-center"},
+            {data: 'attempts_count', name: 'attempts_count', orderable: true, searchable: false, className: "text-center"},
+            {data: 'submission_status', name: 'submission_status', orderable: true, searchable: true, className: "text-center"},
+            {data: 'action', name: 'action', orderable: false, searchable: false, className: "text-center"},
         ]
     });
   });

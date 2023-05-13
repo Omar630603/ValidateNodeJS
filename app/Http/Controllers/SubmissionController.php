@@ -28,18 +28,22 @@ class SubmissionController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
-        $projects = Project::skip(0)->take(3)->get();
+        $projects = Project::all();
         if ($request->ajax()) {
             $data = DB::table('projects')
                 ->select(
                     'projects.id',
                     'projects.title',
-                    DB::raw('(SELECT COUNT(DISTINCT submissions.id) FROM submissions WHERE submissions.project_id = projects.id AND submissions.user_id = ?) as submission_count'),
-                    DB::raw('(SELECT COUNT(*) FROM submission_histories INNER JOIN submissions ON submissions.id = submission_histories.submission_id WHERE submissions.project_id = projects.id AND submissions.user_id = ?) as attempts_count')
+                    // DB::raw('(SELECT COUNT(DISTINCT submissions.id) FROM submissions WHERE submissions.project_id = projects.id AND submissions.user_id = ?) as submission_count'),
+                    DB::raw('(SELECT COUNT(*) FROM submission_histories INNER JOIN submissions ON submissions.id = submission_histories.submission_id WHERE submissions.project_id = projects.id AND submissions.user_id = ?) as attempts_count'),
+                    DB::raw('(SELECT status FROM submissions WHERE submissions.project_id = projects.id AND submissions.user_id = ? ORDER BY id DESC LIMIT 1) as submission_status')
                 )
                 ->groupBy('projects.id', 'projects.title')
-                ->setBindings([$user->id, $user->id]);
-
+                ->setBindings([
+                    // $user->id,
+                    $user->id,
+                    $user->id
+                ]);
 
             return DataTables::of($data)
                 ->addIndexColumn()
@@ -47,7 +51,70 @@ class SubmissionController extends Controller
                     $title_button = '<a href="/submissions/project/' . $row->id . '" class="underline text-secondary">' . $row->title . '</a>';
                     return $title_button;
                 })
-                ->rawColumns(['title'])
+                ->addColumn('submission_status', function ($row) {
+                    $status = $row->submission_status ?? 'No Submission';
+                    $status_color = ($status == 'completed') ? 'green' : (($status == 'pending') ? 'blue' : (($status == 'processing') ? 'secondary' : 'red'));
+                    $status_button = $status != 'No Submission' ? '<span class="inline-flex items-center justify-center px-2 py-1 rounded-lg text-xs font-bold leading-none bg-' . $status_color . '-100 text-' . $status_color . '-800">' . ucfirst($status) . '</span>'
+                        : '<span class="inline-flex items-center justify-center px-2 py-1 rounded-lg text-xs font-bold leading-none bg-gray-100 text-gray-800">No Submission</span>';
+                    return $status_button;
+                })
+                ->addColumn('action', function ($row) use ($user) {
+                    $submission = Submission::where('project_id', $row->id)->where('user_id', $user->id)->orderBy('id', 'DESC')->first();
+                    $buttons = '
+                    <div class="relative" x-data="{ open: false }" @click.outside="open = false" @close.stop="open = false">
+                        <div @click="open = ! open">
+                            <button
+                                class="flex items-center text-sm font-medium text-gray-900 hover:text-gray-500 dark:text-white dark:hover:text-gray-300 hover:underline">
+                                <svg class="ml-1 h-5 w-5 text-gray-500 dark:text-gray-400"
+                                    xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"
+                                    aria-hidden="true">
+                                    <g id="Menu / Menu_Alt_02">
+                                        <path id="Vector" d="M11 17H19M5 12H19M11 7H19" stroke="currentColor"
+                                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                                    </g>
+                                </svg>
+                            </button>
+                        </div>
+                        <div x-show="open"
+                            x-transition:enter="transition ease-out duration-200"
+                            x-transition:enter-start="transform opacity-0 scale-95"
+                            x-transition:enter-end="transform opacity-100 scale-100"
+                            x-transition:leave="transition ease-in duration-75"
+                            x-transition:leave-start="transform opacity-100 scale-100"
+                            x-transition:leave-end="transform opacity-0 scale-95"
+                            class="absolute z-50 mt-2 w-48 rounded-md shadow-lg origin-top"
+                            style="display: none;"
+                            @click="open = false">
+                        <div class="rounded-md ring-1 ring-black ring-opacity-5 py-1 bg-white dark:bg-gray-700">
+                    ';
+                    if ($submission !== null) {
+
+                        $deleteButton = ' <a data-submission-id="' . $submission->id . '"  data-request-type="delete" onclick="requestServer($(this))" class="block w-full px-4 py-2 text-left text-sm leading-5 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-800 transition duration-150 ease-in-out">Delete submission</a> ';
+                        $restartButton = ' <a data-submission-id="' . $submission->id . '"  data-request-type="restart" onclick="requestServer($(this))" class="block w-full px-4 py-2 text-left text-sm leading-5 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-800 transition duration-150 ease-in-out">Restart submission</a> ';
+                        $changeSourceCodeButton = ' <a data-submission-id="' . $submission->id . '"  data-request-type="change-source-code" onclick="requestServer($(this))" class="block w-full px-4 py-2 text-left text-sm leading-5 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-800 transition duration-150 ease-in-out">Change source code</a> ';
+                        if ($submission->status == 'failed' || $submission->status == 'pending') {
+                            if (!$submission->isGithubUrl()) {
+                                $buttons .= $restartButton . $changeSourceCodeButton . $deleteButton . '</div></div>';
+                            } else {
+                                $buttons .= $restartButton . $deleteButton . '</div></div>';
+                            }
+                        } else if ($submission->status == 'processing') {
+                            $buttons .= $restartButton . $deleteButton . '</div></div>';
+                        } else if ($submission->status == 'completed') {
+                            $buttons .= $deleteButton . '</div></div>';
+                        } else {
+                            $buttons .= '</div></div>';
+                        }
+                    } else {
+                        $buttons = '';
+                    }
+                    return $buttons;
+                })
+                ->editColumn('attempts_count', function ($row) {
+                    $attempts_count = $row->attempts_count ?? 0;
+                    return $attempts_count + 1;
+                })
+                ->rawColumns(['title', 'submission_status', 'action'])
                 ->make(true);
         }
         return view('submissions.index', compact('projects'));
@@ -84,6 +151,12 @@ class SubmissionController extends Controller
                 'folder_path' => 'required_without:github_url',
                 'github_url' => 'required_without:folder_path',
             ]);
+
+            if (Submission::where('project_id', $request->project_id)->where('user_id', $request->user()->id)->exists()) {
+                return response()->json([
+                    'message' => 'Submission already exists',
+                ], 400);
+            }
 
             $submission = new Submission();
             $submission->user_id = $request->user()->id;
@@ -467,7 +540,7 @@ class SubmissionController extends Controller
     private function lunchNpmRunStartJob($submission, $tempDir, $step)
     {
         $commands = $step->executionStep->commands;
-        dispatch_sync(new NpmRunStart($submission, $tempDir, $commands))->onQueue(ExecutionStep::$NPM_RUN_START);
+        dispatch_sync(new NpmRunStart($submission, $tempDir, $commands));
     }
 
     private function lunchNpmRunTestsJob($submission, $tempDir, $step)
@@ -481,7 +554,7 @@ class SubmissionController extends Controller
             $testName = str_replace($key, $value, $command);
             array_push($commands, explode(" ", $testName));
         }
-        dispatch_sync(new NpmRunTests($submission, $tempDir, $commands))->onQueue(ExecutionStep::$NPM_RUN_TESTS);
+        dispatch_sync(new NpmRunTests($submission, $tempDir, $commands));
     }
 
     private function lunchDeleteTempDirectoryJob($submission, $tempDir, $step, $commands = null)
@@ -493,6 +566,32 @@ class SubmissionController extends Controller
             $commands = $this->replaceCommandArraysWithValues($step_variables, $values, $step);
             $commands = [$commands];
         }
-        dispatch_sync(new DeleteTempDirectory($submission, $tempDir, $commands))->onQueue(ExecutionStep::$DELETE_TEMP_DIRECTORY);
+        dispatch_sync(new DeleteTempDirectory($submission, $tempDir, $commands));
+    }
+
+    public function destroy(Request $request, $submission_id)
+    {
+        if ($request->ajax()) {
+            $submission = Submission::find($submission_id);
+            if ($submission) {
+                $submission->delete();
+                // delete temp directory and media
+                if ($submission->type == Submission::$FILE) {
+                    $submission->getMedia('submissions')->each(function ($media) {
+                        $media->delete();
+                    });
+                }
+                $tempDir = $this->getTempDir($submission);
+                if (!$this->is_dir_empty($tempDir)) {
+                    Process::fromShellCommandline('rm -rf ' . $tempDir)->run();
+                }
+                return response()->json([
+                    'message' => 'Submission has been deleted successfully',
+                ], 200);
+            }
+            return response()->json([
+                'message' => 'Submission not found',
+            ], 404);
+        }
     }
 }

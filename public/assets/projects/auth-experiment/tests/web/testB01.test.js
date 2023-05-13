@@ -206,6 +206,7 @@ describe("Testing the register page", () => {
         await page.type("#password", user.password);
         await page.type("#confirmPassword", user.password);
         await page.click("button");
+        await new Promise((resolve) => setTimeout(resolve, 1000));
 
         const url = await page.url();
         expect(

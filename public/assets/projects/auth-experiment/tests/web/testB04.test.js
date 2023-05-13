@@ -67,6 +67,7 @@ describe("Testing the edit page", () => {
         await page.type("#username", user.username);
         await page.type("#password", user.password);
         await page.click("button");
+        await new Promise((resolve) => setTimeout(resolve, 1000));
 
         const url = await page.url();
         expect(
@@ -132,6 +133,8 @@ describe("Testing the edit page", () => {
         await nameInput.press("Backspace");
 
         await page.click("button");
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+
         const message = await page.$eval(".message", (el) => el.textContent);
 
         expect(
@@ -149,6 +152,8 @@ describe("Testing the edit page", () => {
         await nameInput.press("Backspace");
         await nameInput.type("John Doe updated");
         await page.click("button");
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+
         const newname = await page.$eval("#name", (el) => el.value);
         expect(
             newname,
@@ -224,6 +229,7 @@ describe("Testing the edit page", () => {
         await currentPasswordInput.type("12345678");
 
         await page.click("button");
+        await new Promise((resolve) => setTimeout(resolve, 1000));
 
         const message = await page.$eval(".message", (el) => el.textContent);
         expect(
@@ -244,6 +250,7 @@ describe("Testing the edit page", () => {
         await currentPasswordInput.type("12345678");
 
         await page.click("button");
+        await new Promise((resolve) => setTimeout(resolve, 1000));
 
         const message = await page.$eval(".message", (el) => el.textContent);
 

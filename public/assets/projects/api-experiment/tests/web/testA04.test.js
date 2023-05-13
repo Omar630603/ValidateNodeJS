@@ -223,6 +223,7 @@ describe("Testing the create product page form submission", () => {
         await priceInput.type("99.99");
         await descriptionInput.type("Updated description");
         await page.click("form > button.btn.btn-primary");
+        await new Promise((resolve) => setTimeout(resolve, 1000));
 
         const url = await page.url();
         expect(
@@ -274,6 +275,8 @@ describe("Testing the create product page form submission", () => {
         await nameInput.click({ clickCount: 3 });
         await nameInput.press("Backspace");
         await page.click("form > button.btn.btn-primary");
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+
         const message = await page.$eval("p.message", (el) => el.textContent);
         expect(
             message,

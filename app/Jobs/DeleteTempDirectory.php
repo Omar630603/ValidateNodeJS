@@ -49,7 +49,7 @@ class DeleteTempDirectory implements ShouldQueue
                     Log::info('Command ' . implode(" ", $value) . ' is successful');
                 } else {
                     Log::error("Failed to delete folder {$this->tempDir} "   . $process->getErrorOutput());
-                    $this->updateSubmissionStatus($submission, Submission::$FAILED, "Failed to delete folder");
+                    // $this->updateSubmissionStatus($submission, Submission::$FAILED, "Failed to delete folder");
                 }
                 Process::fromShellCommandline('kill ' . $process_pid)->run();
             }
@@ -58,7 +58,7 @@ class DeleteTempDirectory implements ShouldQueue
             $this->updateSubmissionStatus($submission, Submission::$COMPLETED, "Deleted folder");
         } catch (\Throwable $th) {
             Log::error("Failed to delete folder {$this->tempDir} " . $th->getMessage());
-            $this->updateSubmissionStatus($submission, Submission::$FAILED, "Failed to delete folder");
+            // $this->updateSubmissionStatus($submission, Submission::$FAILED, "Failed to delete folder");
         }
     }
 

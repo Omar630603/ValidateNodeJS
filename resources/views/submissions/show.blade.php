@@ -40,7 +40,8 @@
                                 <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
                                     <td scope="row"
                                         class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white text-center">
-                                        <span class="text-gray-50 rounded-md bg-secondary p-1 text-md">
+                                        <span
+                                            class="inline-flex items-center justify-center px-2 py-1 rounded-lg text-xs font-bold leading-none bg-secondary-100 text-secondary-800">
                                             Current Attempt {{$submission->attempts}}
                                         </span>
                                     </td>
@@ -49,16 +50,17 @@
                                         @php
                                         $statusClass = '';
                                         if ($submission->status === 'completed') {
-                                        $statusClass = 'bg-green-500';
+                                        $statusClass = 'bg-green-100 text-green-800';
                                         } elseif ($submission->status === 'failed') {
-                                        $statusClass = 'bg-red-500';
+                                        $statusClass = 'bg-red-100 text-red-800';
                                         } elseif ($submission->status === 'processing') {
-                                        $statusClass = 'bg-yellow-500';
+                                        $statusClass = 'bg-secondary-100 text-secondary-800';
                                         } elseif ($submission->status === 'pending') {
-                                        $statusClass = 'bg-blue-500';
+                                        $statusClass = 'bg-blue-100 text-blue-800';
                                         }
                                         @endphp
-                                        <span class="text-gray-50 rounded-md {{$statusClass}} p-1 text-md">
+                                        <span
+                                            class="inline-flex items-center justify-center px-2 py-1 rounded-lg text-xs font-bold leading-none {{$statusClass}}">
                                             {{ucfirst($submission->status)}}
                                         </span>
                                     </td>
@@ -93,17 +95,18 @@
                                         class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
                                         @php
                                         $statusClass = '';
-                                        if ($submission->status === 'completed') {
-                                        $statusClass = 'bg-green-500';
-                                        } elseif ($submission->status === 'failed') {
-                                        $statusClass = 'bg-red-500';
-                                        } elseif ($submission->status === 'processing') {
-                                        $statusClass = 'bg-secondary';
-                                        } elseif ($submission->status === 'pending') {
-                                        $statusClass = 'bg-gray-600';
+                                        if ($history->status === 'completed') {
+                                        $statusClass = 'bg-green-100 text-green-800';
+                                        } elseif ($history->status === 'failed') {
+                                        $statusClass = 'bg-red-100 text-red-800';
+                                        } elseif ($history->status === 'processing') {
+                                        $statusClass = 'bg-secondary-100 text-secondary-800';
+                                        } elseif ($history->status === 'pending') {
+                                        $statusClass = 'bg-blue-100 text-blue-800';
                                         }
                                         @endphp
-                                        <span class="text-gray-50 rounded-md {{$statusClass}} p-1 text-md">
+                                        <span
+                                            class="inline-flex items-center justify-center px-2 py-1 rounded-lg text-xs font-bold leading-none {{$statusClass}}">
                                             {{ucfirst($history->status)}}
                                         </span>
                                     </td>
@@ -641,18 +644,18 @@
                 submission_message.text("Submssion Message: " + message);
                 let statusClass = '';
                 if (status === 'completed') {
-                    statusClass = 'bg-green-500';
+                    statusClass = 'bg-green-100 text-green-800';
                 } else if (status === 'failed') {
-                    statusClass = 'bg-red-500';
+                    statusClass = 'bg-red-100 text-red-800';
                 } else if (status === 'processing') {
-                    statusClass = 'bg-secondary';
+                    statusClass = 'bg-secondary-100 text-secondary-800';
                 } else if (status === 'pending') {
-                    statusClass = 'bg-gray-600';
+                    statusClass = 'bg-blue-100 text-blue-800';
                 } else if (status === 'Wait') {
-                    statusClass = 'bg-gray-600';
+                    statusClass = 'bg-blue-100 text-blue-800';
                 }
                 status = status.charAt(0).toUpperCase() + status.slice(1);
-                submission_status.append(`<span class="text-gray-50 rounded-md ${statusClass} p-1 text-md">
+                submission_status.append(`<span class="inline-flex items-center justify-center px-2 py-1 rounded-lg text-md font-bold leading-none ${statusClass}">
                     ${status}
                 </span>`);
             }

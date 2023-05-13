@@ -36,15 +36,26 @@ Route::middleware('auth')->group(function () {
     });
     // Submissions
     Route::prefix('submissions')->group(function () {
+        // show all the submission based on the projects
         Route::get('/', [SubmissionController::class, 'index'])->name('submissions');
+        // show all the attempts based on the submission and the project
         Route::get('/project/{project_id}', [SubmissionController::class, 'showAllSubmissionsBasedOnProject'])->name('submissions.showAll');
+        // show the submission based on the submission id
         Route::get('/submission/{submission_id}', [SubmissionController::class, 'show'])->name('submissions.show');
+        // show the submission history based on the history id
         Route::get('/submission/history/{history_id}', [SubmissionController::class, 'history'])->name('submissions.history');
+        // process the submission steps
         Route::post('/process/submission/{submission_id}', [SubmissionController::class, 'process'])->name('submissions.process');
+        // refresh the submission steps based on the submission npm install step
         Route::post('/refresh/submission/{submission_id}', [SubmissionController::class, 'refresh'])->name('submissions.refresh');
+        // get the submission status based on the submission id
         Route::get('/status/submission/{submission_id}', [SubmissionController::class, 'status'])->name('submissions.status');
+        // upload the submission's zip file based on the project id
         Route::post('/upload/{project_id}', [SubmissionController::class, 'upload'])->name('submissions.upload');
+        // submit the submission based on the submission id
         Route::post('/submit', [SubmissionController::class, 'submit'])->name('submissions.submit');
+        // delete the submission based on the submission id
+        Route::delete('/submission/{submission_id}', [SubmissionController::class, 'destroy'])->name('submissions.destroy');
     });
 });
 
