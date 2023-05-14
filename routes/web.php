@@ -45,7 +45,7 @@ Route::middleware('auth')->group(function () {
         // show the submission history based on the history id
         Route::get('/submission/history/{history_id}', [SubmissionController::class, 'history'])->name('submissions.history');
         // download the submission history based on the history id
-        Route::get('/submission/history/{history_id}/download', [SubmissionController::class, 'downloadHistory'])->name('submissions.downloadHistory');
+        Route::get('/submission/{id}/download', [SubmissionController::class, 'downloadHistory'])->name('submissions.downloadHistory');
         // process the submission steps
         Route::post('/process/submission', [SubmissionController::class, 'process'])->name('submissions.process');
         // refresh the submission steps based on the submission npm install step

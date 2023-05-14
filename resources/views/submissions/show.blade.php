@@ -85,6 +85,12 @@
                                     <td class="px-6 py-4 text-right">
                                         <a href="/submissions/submission/{{ $submission->id }}"
                                             class="font-medium text-blue-600 dark:text-blue-500 hover:underline">View</a>
+                                        @if ($submission->status === 'completed' || $submission->status === 'failed')
+                                        |
+                                        <a href="/submissions/submission/{{ $submission->id }}/download?type=current"
+                                            class="font-medium text-blue-600 dark:text-blue-500 hover:underline">Download
+                                            Results</a>
+                                        @endif
                                     </td>
                                 </tr>
                                 <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
@@ -135,7 +141,7 @@
                                         <a href="/submissions/submission/history/{{ $history->id }}"
                                             class="font-medium text-blue-600 dark:text-blue-500 hover:underline">View</a>
                                         |
-                                        <a href="/submissions/submission/history/{{ $history->id }}/download"
+                                        <a href="/submissions/submission/{{ $history->id }}/download?type=history"
                                             class="font-medium text-blue-600 dark:text-blue-500 hover:underline">Download
                                             Results</a>
                                     </td>
@@ -465,13 +471,6 @@
                     }
                 }
                 // update the submission results last element
-                const submission_results_done = $('#submission_results_done');
-                submission_results_done.children('p').text("Status: " + response.status);
-                submission_results_done.children('p').removeClass("text-gray-400");
-                submission_results_done.children('p').removeClass("text-secondary");
-                submission_results_done.children('p').addClass("text-red-400");
-                submission_results_done.children('p').next().text("Message: " + response.message);
-                submission_results_done.children('p').next().removeClass("text-red-400");
             }
 
             async function requestRefresh() {
@@ -529,12 +528,14 @@
                 barElement.addClass('bg-green-400');
                 // update the submission results last element
                 const submission_results_done = $('#submission_results_done');
-                submission_results_done.children('p').text("Status: " + response.status);
+                submission_results_done.children('h2').text("Status: " + response.status);
                 submission_results_done.children('p').removeClass("text-red-400");
                 submission_results_done.children('p').removeClass("text-gray-400");
                 submission_results_done.children('p').addClass("text-secondary");
                 submission_results_done.children('p').next().text("Message: " + response.message);
                 submission_results_done.children('p').next().removeClass("text-secondary");
+
+                console.log($('#submission_results_done').children());
             }
 
             function updateUI(response){
@@ -654,11 +655,22 @@
                         }              
                     }
                     // add the last step done
-                    submission_results.append(`<div class="text-lg text-white mt-5 border p-5 rounded-md" id="submission_results_done">
-                        <h1 class="text-md font-bold">${number+1}- Done</h1>
-                        <h2 class="text-xs font-semibold text-gray-400">Status: Pending</h2>
-                        <p class="text-xs font-semibold text-gray-400 break-words">Output:</p>
-                        </div>`);
+                    statusClasses = '';
+                    if (response.status === 'completed') {
+                        statusClasses = 'text-secondary';
+                    } else if (response.status === 'failed') {
+                        statusClasses = 'text-red-400';
+                    } else if (response.status === 'processing') {
+                        statusClasses = 'text-gray-400';
+                    } else if (response.status === 'pending') {
+                        statusClasses = 'text-gray-400';
+                    }
+                    doneStep = ` <div class="text-lg text-white mt-5 border p-5 rounded-md" id="submission_results_done">
+                        <h1 class="text-md font-bold">${number}- Done</h1>
+                        <h2 class="text-xs font-semibold ${statusClasses}">Status: ${response.status}</h2>
+                        <p class="text-xs font-semibold ${statusClasses}">Message: ${response.message}</p>
+                        </div>`;
+                    submission_results.append(doneStep);
                 }
             }
 

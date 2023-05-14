@@ -718,12 +718,20 @@ class SubmissionController extends Controller
     }
 
 
-    public function downloadHistory($history_id)
+    public function downloadHistory(Request $request, $id)
     {
+        if (!$request->type) {
+            return redirect()->route('submissions');
+        }
+
         $user = Auth::user();
-        $submission = SubmissionHistory::where('id', $history_id)->where('user_id', $user->id)->first();
+        $submission = $request->type == 'history' ? SubmissionHistory::where('id', $id)->where('user_id', $user->id)->first() :  Submission::where('id', $id)->where('user_id', $user->id)->first();
 
         if (!$submission) {
+            return redirect()->route('submissions');
+        }
+
+        if ($request->type == 'current' && $submission->status != Submission::$COMPLETED && $submission->status != Submission::$FAILED) {
             return redirect()->route('submissions');
         }
         $results = json_encode($submission->results, JSON_PRETTY_PRINT);
@@ -732,7 +740,7 @@ class SubmissionController extends Controller
             return $a['order'] - $b['order'];
         });
         $jsonResults = json_encode($results_array, JSON_PRETTY_PRINT);
-        $filename = 'submission_' . $submission->project->title . '_' . $user->id . '_' . $history_id . '.json';
+        $filename = 'submission_' . $submission->project->title . '_' . $user->id . '_' . $id . '_' . now()->format('Y-m-d_H-i-s') . '.json';
         $headers = [
             'Content-Type' => 'application/json',
             'Content-Disposition' => 'attachment; filename=' . $filename,
