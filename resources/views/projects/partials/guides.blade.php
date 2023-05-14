@@ -11,7 +11,7 @@
         </h2>
     </div>
     <div id="grid" class="grid grid-col-1 md:grid-cols-2 gap-4 py-2 items-center">
-        <div>
+        <div class="mb-20">
             {{-- list of guides --}}
             <table class="w-full text-sm text-left text-gray-500 dark:text-gray-400">
                 <caption

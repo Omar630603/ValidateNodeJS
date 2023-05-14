@@ -44,10 +44,12 @@ Route::middleware('auth')->group(function () {
         Route::get('/submission/{submission_id}', [SubmissionController::class, 'show'])->name('submissions.show');
         // show the submission history based on the history id
         Route::get('/submission/history/{history_id}', [SubmissionController::class, 'history'])->name('submissions.history');
+        // download the submission history based on the history id
+        Route::get('/submission/history/{history_id}/download', [SubmissionController::class, 'downloadHistory'])->name('submissions.downloadHistory');
         // process the submission steps
-        Route::post('/process/submission/{submission_id}', [SubmissionController::class, 'process'])->name('submissions.process');
+        Route::post('/process/submission', [SubmissionController::class, 'process'])->name('submissions.process');
         // refresh the submission steps based on the submission npm install step
-        Route::post('/refresh/submission/{submission_id}', [SubmissionController::class, 'refresh'])->name('submissions.refresh');
+        Route::post('/refresh/submission', [SubmissionController::class, 'refresh'])->name('submissions.refresh');
         // get the submission status based on the submission id
         Route::get('/status/submission/{submission_id}', [SubmissionController::class, 'status'])->name('submissions.status');
         // upload the submission's zip file based on the project id
@@ -55,7 +57,13 @@ Route::middleware('auth')->group(function () {
         // submit the submission based on the submission id
         Route::post('/submit', [SubmissionController::class, 'submit'])->name('submissions.submit');
         // delete the submission based on the submission id
-        Route::delete('/submission/{submission_id}', [SubmissionController::class, 'destroy'])->name('submissions.destroy');
+        Route::delete('/delete/submission', [SubmissionController::class, 'destroy'])->name('submissions.destroy');
+        // restart the submission based on the submission id
+        Route::post('/restart/submission', [SubmissionController::class, 'restart'])->name('submissions.restart');
+        // update source code page based on the submission id
+        Route::get('/change/{submission_id}', [SubmissionController::class, 'changeSourceCode'])->name('submissions.changeSourceCode');
+        // update source code based on the submission id
+        Route::post('/update/submission', [SubmissionController::class, 'update'])->name('submissions.update');
     });
 });
 

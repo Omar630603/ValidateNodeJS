@@ -28,8 +28,11 @@
                 }).then((willDelete) => {
                     if (willDelete) {
                         $.ajax({
-                            url: '/submissions/submission/' + submission_id,
+                            url: '/submissions/delete/submission',
                             type: 'DELETE',
+                            headers: {
+                                'X-CSRF-TOKEN': '{{ csrf_token()}}'
+                            },
                             data: {
                                 submission_id: submission_id,
                                 _token: '{{ csrf_token() }}',
@@ -57,8 +60,50 @@
                 });
                 break;
             case "restart":
+                swal({
+                    title: "Are you sure?",
+                    text: "You are about to restart this submission!",
+                    icon: "warning",
+                    buttons: true,
+                    dangerMode: true,
+                }).then((willRestart) => {
+                    if (willRestart) {
+                        $.ajax({
+                            url: '/submissions/restart/submission',
+                            type: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': '{{ csrf_token()}}'
+                            },
+                            data: {
+                                submission_id: submission_id,
+                                _token: '{{ csrf_token() }}',
+                            },
+                            success: function(data) {
+                                swal({
+                                    title: "Success!",
+                                    text: "Your submission has been restarted!",
+                                    icon: "success",
+                                    button: "Ok",
+                                }).then(function() {
+                                    window.location = "/submissions";
+                                });
+                            },
+                            error: function(data) {
+                                swal({
+                                    title: "Error!",
+                                    text: "Something went wrong!",
+                                    icon: "error",
+                                    button: "Ok",
+                                });
+                                console.log(data);
+                            }
+                        });
+                    }
+                });
                 break;
             case "change-source-code":
+                // redirect to change source code page
+                window.location = '/submissions/change/' + submission_id;
                 break;
             default:
                 break;

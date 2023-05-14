@@ -27,7 +27,9 @@ class Submission extends Model implements HasMedia
         'status',
         'results',
         'attempts',
-        'port'
+        'port',
+        'start',
+        'end',
     ];
 
     protected $casts = [
@@ -274,5 +276,34 @@ class Submission extends Model implements HasMedia
     public function getTotalAttemptsCount()
     {
         return $this->history->count() + 1;
+    }
+
+    public function restart()
+    {
+        $this->updateStatus(Submission::$PENDING);
+        $this->increaseAttempts();
+        $this->updatePort(null);
+        $this->restartTime();
+        $this->initializeResults();
+    }
+
+    public function createHistory($description)
+    {
+        // use the method attach to attach the history to the submission
+        $history = $this->history()->create([
+            'user_id' => $this->user_id,
+            'project_id' => $this->project_id,
+            'type' => $this->type,
+            'path' => $this->path,
+            'status' => $this->status,
+            'results' => $this->results,
+            'attempts' => $this->attempts,
+            'port' => $this->port,
+            'start' => $this->start,
+            'end' => $this->end,
+            'description' => $description,
+        ]);
+
+        return $history;
     }
 }

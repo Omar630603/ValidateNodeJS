@@ -33,6 +33,7 @@
                                     <th scope="col" class="px-6 py-3">Attempt NO#</th>
                                     <th scope="col" class="px-6 py-3">Status</th>
                                     <th scope="col" class="px-6 py-3">Time Spent</th>
+                                    <th scope="col" class="px-6 py-3">Description</th>
                                     <th scope="col" class="px-6 py-3"><span class="sr-only">Edit</span></th>
                                 </tr>
                             </thead>
@@ -42,7 +43,7 @@
                                         class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white text-center">
                                         <span
                                             class="inline-flex items-center justify-center px-2 py-1 rounded-lg text-xs font-bold leading-none bg-secondary-100 text-secondary-800">
-                                            Current Attempt {{$submission->attempts}}
+                                            {{$submission->attempts}}
                                         </span>
                                     </td>
                                     <td scope="row"
@@ -74,6 +75,13 @@
                                         @endphp
                                         {{$time}}
                                     </td>
+                                    <td scope="row"
+                                        class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
+                                        <span
+                                            class="inline-flex items-center justify-center px-2 py-1 rounded-lg text-xs font-bold leading-none bg-secondary-100 text-secondary-800">
+                                            Current Attempt
+                                        </span>
+                                    </td>
                                     <td class="px-6 py-4 text-right">
                                         <a href="/submissions/submission/{{ $submission->id }}"
                                             class="font-medium text-blue-600 dark:text-blue-500 hover:underline">View</a>
@@ -85,7 +93,7 @@
                                         Past Attempts
                                     </td>
                                 </tr>
-                                @forelse ($submission->history as $history)
+                                @forelse ($submission->history->sortByDesc('attempts') as $history)
                                 <tr class="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
                                     <td scope="row"
                                         class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white text-center">
@@ -119,9 +127,17 @@
                                         @endphp
                                         {{$history_time}}
                                     </td>
+                                    <td scope="row"
+                                        class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-white">
+                                        {{$history->description}}
+                                    </td>
                                     <td class="px-6 py-4 text-right">
                                         <a href="/submissions/submission/history/{{ $history->id }}"
                                             class="font-medium text-blue-600 dark:text-blue-500 hover:underline">View</a>
+                                        |
+                                        <a href="/submissions/submission/history/{{ $history->id }}/download"
+                                            class="font-medium text-blue-600 dark:text-blue-500 hover:underline">Download
+                                            Results</a>
                                     </td>
                                 </tr>
                                 @empty
@@ -281,6 +297,7 @@
                 message: 'Submission is pending',
                 results: {}
             };
+            let error_server = false;
             // the history page
             let isNotHistory =  `{{!request()->routeIs('submissions.history')}}`;
             isNotHistory = isNotHistory == 1 ? true : false;
@@ -315,8 +332,7 @@
                             if (response.status === 'processing' || response.status === 'pending') {
                                 try {
                                     checkSubmissionProgress();
-                                    if (response.step !== null) {  
-                                        console.log(response); 
+                                    if (response.step !== null && error_server == false) {  
                                             setTimeout(() => {
                                                 window.requestAnimationFrame(getSubmissionStatus);
                                             }, 2000);
@@ -351,13 +367,15 @@
                 try {
                     // get the response from the server
                     const response = await $.ajax({
-                        url: `/submissions/process/submission/{{ $submission->id }}`,
+                        url: `/submissions/process/submission`,
                         method: 'POST',
                         headers: {
                             'X-CSRF-TOKEN': '{{ csrf_token() }}'
                         },
                         data: {
                             isNotHistory: isNotHistory,
+                            submission_id: '{{ $submission->id }}',
+                            _token: '{{ csrf_token() }}',
                         },
                     });
 
@@ -412,6 +430,7 @@
                         message: 'Something went wrong'
                     };
                     updateUIFailedStatus(error_response);
+                    error_server = true;
                     throw error;
                     // console.log(error);
                 }
@@ -464,11 +483,15 @@
                         // prevent the user from clicking the button multiple times
                         allowedToRefresh = false;
                         const response = await $.ajax({
-                            url: '/submissions/refresh/submission/{{ $submission->id }}',
+                            url: '/submissions/refresh/submission',
                             method: 'POST',
                             headers: {
                                 'X-CSRF-TOKEN': '{{ csrf_token()}}'
-                            }
+                            },
+                            data: {
+                                submission_id: '{{ $submission->id }}',
+                                _token: '{{ csrf_token() }}',
+                            },
                         });
                         // update the UI with the response
                         // refresh the page after 5 seconds

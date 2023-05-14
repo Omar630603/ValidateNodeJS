@@ -24,6 +24,7 @@ return new class extends Migration
             $table->timestamp('start')->nullable();
             $table->timestamp('end')->nullable();
             $table->integer('port')->nullable()->comment('The port number of the submission');
+            $table->text('description')->nullable()->comment('The description of the submission');
             $table->timestamps();
         });
     }

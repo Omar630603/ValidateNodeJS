@@ -25,7 +25,10 @@ class SubmissionHistory extends Model
         'status',
         'results',
         'attempts',
-        'port'
+        'port',
+        'start',
+        'end',
+        'description'
     ];
 
     protected $casts = [

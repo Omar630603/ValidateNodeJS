@@ -18,6 +18,7 @@ use App\Models\Submission;
 use App\Models\SubmissionHistory;
 use App\Models\TemporaryFile;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\Process\Process;
@@ -211,7 +212,8 @@ class SubmissionController extends Controller
 
     public function show(Request $request, $submission_id)
     {
-        $submission = Submission::find($submission_id);
+        $user = Auth::user();
+        $submission = Submission::where('id', $request->submission_id)->where('user_id', $user->id)->first();
         if ($submission) {
             $steps = $submission->getExecutionSteps();
             return view('submissions.show', compact('submission', 'steps'));
@@ -221,7 +223,8 @@ class SubmissionController extends Controller
 
     public function history(Request $request, $history_id)
     {
-        $submission = SubmissionHistory::find($history_id);
+        $user = Auth::user();
+        $submission = SubmissionHistory::where('id', $history_id)->where('user_id', $user->id)->first();
         if ($submission) {
             $steps = $submission->getExecutionSteps();
             return view('submissions.show', compact('submission', 'steps'));
@@ -232,7 +235,8 @@ class SubmissionController extends Controller
     public function status(Request $request, $submission_id)
     {
         $isNotHistory = filter_var($request->isNotHistory, FILTER_VALIDATE_BOOLEAN);
-        $submission = $isNotHistory ?  Submission::find($submission_id) : SubmissionHistory::find($submission_id);
+        $user = Auth::user();
+        $submission = $isNotHistory ?  Submission::where('id', $submission_id)->where('user_id', $user->id)->first() : SubmissionHistory::where('id', $submission_id)->where('user_id', $user->id)->first();
         if (!$submission) {
             return response()->json([
                 'message' => 'Submission not found',
@@ -266,10 +270,15 @@ class SubmissionController extends Controller
         }
     }
 
-    public function process(Request $request, $submission_id)
+    public function process(Request $request)
     {
+        if ($request->submission_id == null || $request->isNotHistory == null) return response()->json([
+            'message' => 'Submission ID is required',
+        ], 404);
+
         $isNotHistory = filter_var($request->isNotHistory, FILTER_VALIDATE_BOOLEAN);
-        $submission = $isNotHistory ?  Submission::find($submission_id) : SubmissionHistory::find($submission_id);
+        $user = Auth::user();
+        $submission = $isNotHistory ?  Submission::where('id', $request->submission_id)->where('user_id', $user->id)->first() : SubmissionHistory::where('id', $request->submission_id)->where('user_id', $user->id)->first();
 
         if ($submission) {
             $completion_percentage = round($submission->getTotalCompletedSteps() / $submission->getTotalSteps() * 100);
@@ -360,24 +369,16 @@ class SubmissionController extends Controller
         ], 200);
     }
 
-    public function refresh(Request $request, $submission_id)
+    public function refresh(Request $request)
     {
-        $submission = Submission::find($submission_id);
+        if ($request->submission_id == null) return response()->json([
+            'message' => 'Submission ID is required',
+        ], 404);
+        $user = Auth::user();
+        $submission = Submission::where('id', $request->submission_id)->where('user_id', $user->id)->first();
         if ($submission and $submission->status === Submission::$FAILED) {
             // Create submission history
-            $submission_history                 = new SubmissionHistory();
-            $submission_history->submission_id  = $submission->id;
-            $submission_history->user_id        = $submission->user_id;
-            $submission_history->project_id     = $submission->project_id;
-            $submission_history->type           = $submission->type;
-            $submission_history->path           = $submission->path;
-            $submission_history->status         = $submission->status;
-            $submission_history->results        = $submission->results;
-            $submission_history->attempts       = $submission->attempts;
-            $submission_history->start          = $submission->start;
-            $submission_history->end            = $submission->end;
-            $submission_history->port           = $submission->port;
-            $submission_history->save();
+            $submission->createHistory("Submission has failed, so it has been refreshed");
 
             // if npm is installed
             if ($submission->results->{ExecutionStep::$NPM_INSTALL}->status == Submission::$COMPLETED and !$this->is_dir_empty($this->getTempDir($submission))) {
@@ -432,6 +433,7 @@ class SubmissionController extends Controller
 
     private function is_dir_empty($dir)
     {
+        if (!is_readable($dir)) return true;
         $handle = opendir($dir);
         while (false !== ($entry = readdir($handle))) {
             if ($entry != "." && $entry != "..") {
@@ -569,10 +571,14 @@ class SubmissionController extends Controller
         dispatch_sync(new DeleteTempDirectory($submission, $tempDir, $commands));
     }
 
-    public function destroy(Request $request, $submission_id)
+    public function destroy(Request $request)
     {
         if ($request->ajax()) {
-            $submission = Submission::find($submission_id);
+            if ($request->submission_id == null) return response()->json([
+                'message' => 'Submission ID is required',
+            ], 404);
+            $user = Auth::user();
+            $submission = Submission::where('id', $request->submission_id)->where('user_id', $user->id)->first();
             if ($submission) {
                 $submission->delete();
                 // delete temp directory and media
@@ -593,5 +599,150 @@ class SubmissionController extends Controller
                 'message' => 'Submission not found',
             ], 404);
         }
+    }
+
+    public function restart(Request $request)
+    {
+        if ($request->ajax()) {
+            if ($request->submission_id == null) return response()->json([
+                'message' => 'Submission ID is required',
+            ], 404);
+            $user = Auth::user();
+            $submission = Submission::where('id', $request->submission_id)->where('user_id', $user->id)->first();
+            if ($submission) {
+                $submission->createHistory("Submission has been restarted");
+
+                if ($submission->port != null) {
+                    $commands = [
+                        ['npx', 'kill-port', $submission->port],
+                        ['rm', '-rf', $this->getTempDir($submission)],
+                    ];
+                } else {
+                    $commands = [
+                        ['rm', '-rf', $this->getTempDir($submission)],
+                    ];
+                }
+                // Delete temp directory
+                foreach ($commands as $command) {
+                    if (!$this->is_dir_empty($this->getTempDir($submission))) {
+                        $process = new Process($command, null, null, null, 120);
+                        $process->run();
+                        if ($process->isSuccessful()) {
+                            Log::info('Command ' . implode(" ", $command) . ' is successful');
+                        } else {
+                            Log::error('Command ' . implode(" ", $command) . ' has failed '   . $process->getErrorOutput());
+                        }
+                    }
+                }
+
+                $submission->restart();
+
+                return response()->json([
+                    'message' => 'Submission has been restarted successfully',
+                ], 200);
+            }
+            return response()->json([
+                'message' => 'Submission not found',
+            ], 404);
+        }
+    }
+
+    public function changeSourceCode($submission_id)
+    {
+        $user = Auth::user();
+        $submission = Submission::where('id', $submission_id)->where('user_id', $user->id)->first();
+        if ($submission) {
+            return view('submissions.change_source_code', compact('submission'));
+        }
+        return redirect()->route('submissions');
+    }
+
+    public function update(Request $request)
+    {
+        try {
+            $request->validate([
+                'submission_id' => 'required|exists:submissions,id',
+                'folder_path' => 'required_without:github_url',
+                'github_url' => 'required_without:folder_path',
+            ]);
+
+
+            $user = Auth::user();
+            $submission = Submission::where('id', $request->submission_id)->where('user_id', $user->id)->first();
+
+            $submission->createHistory("Code has been changed");
+
+            if (!$submission->isGithubUrl()) {
+                $submission->getMedia('submissions')->each(function ($media) {
+                    $media->delete();
+                });
+            }
+
+            // delete temp directory if is not empty
+            $tempDir = $this->getTempDir($submission);
+            if (!$this->is_dir_empty($tempDir)) {
+                Process::fromShellCommandline('rm -rf ' . $tempDir)->run();
+            }
+
+            if ($request->has('folder_path')) {
+                $submission->type = Submission::$FILE;
+                $submission->path = $request->folder_path;
+
+                $temporary_file = TemporaryFile::where('folder_path', $request->folder_path)->first();
+
+                if ($temporary_file) {
+                    $path = storage_path('app/' . $request->folder_path . '/' . $temporary_file->file_name);
+                    $submission->addMedia($path)->toMediaCollection('submissions', 'public_submissions_files');
+                    if ($this->is_dir_empty(storage_path('app/' . $request->folder_path))) {
+                        rmdir(storage_path('app/' . $request->folder_path));
+                    }
+                    $temporary_file->delete();
+                }
+            } else {
+                $submission->type = Submission::$URL;
+                $submission->path = $request->github_url;
+            }
+            $submission->save();
+            $submission->restart();
+
+            return response()->json([
+                'message' => 'Submission created successfully',
+                'submission' => $submission,
+            ], 201);
+        } catch (\Throwable $th) {
+            return response()->json([
+                'message' => 'Submission failed',
+                'error' => $th->getMessage(),
+            ], 500);
+        }
+    }
+
+
+    public function downloadHistory($history_id)
+    {
+        $user = Auth::user();
+        $submission = SubmissionHistory::where('id', $history_id)->where('user_id', $user->id)->first();
+
+        if (!$submission) {
+            return redirect()->route('submissions');
+        }
+        $results = json_encode($submission->results, JSON_PRETTY_PRINT);
+        $results_array = json_decode($results, true);
+        uasort($results_array, function ($a, $b) {
+            return $a['order'] - $b['order'];
+        });
+        $jsonResults = json_encode($results_array, JSON_PRETTY_PRINT);
+        $filename = 'submission_' . $submission->project->title . '_' . $user->id . '_' . $history_id . '.json';
+        $headers = [
+            'Content-Type' => 'application/json',
+            'Content-Disposition' => 'attachment; filename=' . $filename,
+        ];
+
+        return response()->streamDownload(function () use ($submission, $user, $jsonResults) {
+            echo "Submission for project: " . $submission->project->title . " | User: " . $user->name . "\n";
+            echo "====================================================================================================\n";
+            echo $jsonResults;
+            echo "\n====================================================================================================";
+        }, $filename, $headers);
     }
 }
