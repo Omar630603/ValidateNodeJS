@@ -1,4 +1,4 @@
-<table class="table" id="submissions_table">
+<table class="table pb-20" id="submissions_table">
     <thead>
         <tr>
             <th>Title</th>
