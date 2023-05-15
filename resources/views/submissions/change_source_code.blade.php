@@ -47,6 +47,23 @@
         let url = '/submissions/upload';
         const project_id = '{{ $submission->project->id }}';
         // pond has value then disable github_url and vice versa
+        url = '/submissions/upload/' + project_id;
+        pond.setOptions({
+            server: {
+                url: url,
+                process: {
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token()}}'
+                    }
+                },
+            },
+            allowMultiple: false,
+            acceptedFileTypes: ['application/x-zip-compressed'],
+            fileValidateTypeDetectType: (source, type) =>
+                new Promise((resolve, reject) => {
+                resolve(type);
+            }),    
+        });
         pond.on('addfile', function() {
             if (pond.getFiles().length > 0) {
                 github_url.disabled = true;
@@ -55,7 +72,7 @@
                 github_url.disabled = false;
                 url = '/submissions/upload';
             }
-            FilePond.setOptions({
+            pond.setOptions({
                 server: {
                     url: url,
                     process: {
@@ -81,7 +98,7 @@
                 pond.disabled = false;
                 url = '/submissions/upload';
             }
-            FilePond.setOptions({
+            pond.setOptions({
                 server: {
                     url: url,
                     process: {
