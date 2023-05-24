@@ -54,7 +54,7 @@ class NpmRunTests implements ShouldQueue
                 if ($process->isSuccessful()) {
                     $pass_all[$key] = true;
                     Log::info("{$command_string} in folder {$this->tempDir}");
-                    $this->updateSubmissionTestsResultsStatus($command_string, $submission, Submission::$COMPLETED, $process->getOutput());
+                    $this->updateSubmissionTestsResultsStatus($command_string, $submission, Submission::$COMPLETED, "Completed");
                 } else {
                     $pass_all[$key] = false;
                     Log::error("Failed to NPM run test {$command_string} "   . $process->getErrorOutput());
