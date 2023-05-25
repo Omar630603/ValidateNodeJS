@@ -118,6 +118,7 @@ describe("Testing the login page", () => {
         await page.type("#username", user.username);
         await page.type("#password", user.password);
         await page.click("button");
+        await new Promise((resolve) => setTimeout(resolve, 1000));
 
         const url = await page.url();
         expect(
