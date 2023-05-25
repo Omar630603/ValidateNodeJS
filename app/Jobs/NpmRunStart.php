@@ -49,6 +49,7 @@ class NpmRunStart
             $this->updateSubmissionStatus($submission, Submission::$FAILED, "Failed to find an available port for the project");
             return;
         }
+        $submission->updatePort($port);
         // Change port number in .env file
         $envPath = "$tempDir/.env";
         if (file_exists($envPath)) {
@@ -68,7 +69,6 @@ class NpmRunStart
             if (strpos($process->getOutput(), "Server started on port $port") !== false) {
                 Log::info("NPM run start is completed in folder {$tempDir} the application is running on port $port");
                 $this->updateSubmissionStatus($submission, Submission::$COMPLETED, $process->getOutput());
-                $submission->updatePort($port);
                 $process->wait();
             } else {
                 Log::error("Failed to NPM run start in folder {$tempDir} due to error " .  $process->getOutput());
@@ -98,7 +98,7 @@ class NpmRunStart
         $maxPort = 9999;
         for ($port = $minPort; $port <= $maxPort; $port++) {
             $fp = @fsockopen('localhost', $port, $errno, $errstr, 1);
-            if (!$fp) {
+            if (!$fp && Submission::where('port', $port)->doesntExist()) {
                 return $port;
             } else {
                 fclose($fp);
