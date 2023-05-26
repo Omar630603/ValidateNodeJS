@@ -42,6 +42,9 @@ class CopyTestsFolder implements ShouldQueue
         $this->updateSubmissionStatus($submission, Submission::$PROCESSING, "Copying tests folder");
         try {
             // processing
+            if (is_dir($this->tempDir . '/tests')) {
+                Process::fromShellCommandline("rm -rf {$this->tempDir}/tests")->run();
+            }
             mkdir($this->tempDir . '/tests', 0777, true);
             mkdir($this->tempDir . '/tests/api', 0777, true);
             mkdir($this->tempDir . '/tests/web', 0777, true);
