@@ -43,6 +43,7 @@ class CopyTestsFolder implements ShouldQueue
         try {
             // processing
             if (is_dir($this->tempDir . '/tests')) {
+                Log::info("Removing old tests folder from {$this->tempDir}");
                 Process::fromShellCommandline("rm -rf {$this->tempDir}/tests")->run();
             }
             mkdir($this->tempDir . '/tests', 0777, true);
