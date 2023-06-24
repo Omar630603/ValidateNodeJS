@@ -101,7 +101,9 @@ class NpmRunStart
             if (!$fp && Submission::where('port', $port)->doesntExist()) {
                 return $port;
             } else {
-                fclose($fp);
+                if (is_resource($fp)) {
+                    fclose($fp);
+                }
             }
         }
         return null;

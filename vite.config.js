@@ -19,7 +19,7 @@ export default defineConfig({
         },
         watch: {
             ignored: ["public/storage/**/*", "storage/**/*", "**/.env"],
-            // usePolling: true,
+            usePolling: true,
         },
     },
 });
